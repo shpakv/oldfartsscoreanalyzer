@@ -1,0 +1,80 @@
+name: Old Fart GOLANG CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # 1) Шаг EntryGate
+  lint-and-format:
+    name: EntryGate (Линтинг и форматирование)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.23"
+
+      # Проверка кода на форматирование (gofmt)
+      - name: Check formatting
+        run: |
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "Не отформатированные файлы:"
+            echo "$UNFORMATTED"
+            echo "Пожалуйста, запустите 'gofmt -w .' и закоммитьте изменения."
+            exit 1
+          fi
+
+      # Линтер (пример с golangci-lint, можно добавить и другие проверки)
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+
+  # 2) Шаг Build
+  build:
+    name: Build (Сборка проекта)
+    runs-on: ubuntu-latest
+    needs: [lint-and-format]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.23"
+
+      - name: Build cmd/app1
+        run: go build -o bin/app1 ./cmd/app1
+
+      - name: Build cmd/app2
+        run: go build -o bin/app2 ./cmd/app2
+
+  # 3) Шаг Test
+  test:
+    name: Test (Тесты и покрытие)
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.23"
+
+      # Запуск тестов с покрытием
+      - name: Run tests with coverage
+        run: go test -v -coverprofile=coverage.out ./...
+
+      # Отобразить статистику покрытия в логах
+      - name: Show coverage
+        run: go tool cover -func=coverage.out
