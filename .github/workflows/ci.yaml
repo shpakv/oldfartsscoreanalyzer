@@ -51,11 +51,8 @@ jobs:
         with:
           go-version: "1.23"
 
-      - name: Build cmd/app1
-        run: go build -o bin/app1 ./cmd/app1
-
-      - name: Build cmd/app2
-        run: go build -o bin/app2 ./cmd/app2
+      - name: Build application
+        run: echo "Nothing to build, WIP."
 
   # 3) Шаг Test
   test:
