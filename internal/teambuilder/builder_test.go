@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestTeamBuilder_Calculate тестирует функцию распределения игроков по командам
+// TestTeamBuilder_Calculate тестирует функцию распределения игроков по командам.
 // Покрывает следующие сценарии:
 //  1. Базовое распределение без ограничений
 //  2. Распределение с требованием совместить определенных игроков
@@ -126,8 +126,15 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 	// Выполнение тестов для каждого сценария
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			// Создание конфигурации
+			config := &TeamConfiguration{
+				Players:     tc.players,
+				Constraints: tc.constraints,
+				TeamSize:    tc.teamSize,
+			}
+
 			// Распределение команд
-			team1, team2 := c.Calculate(tc.players, tc.teamSize, tc.constraints)
+			team1, team2 := c.Build(config)
 
 			// Вывод информации о командах
 			printTeamDetails(t, team1, team2)
@@ -170,7 +177,7 @@ func printTeamDetails(t *testing.T, team1, team2 Team) {
 	t.Logf("**** Score Difference: %.2f ****", math.Abs(totalWeight1-totalWeight2))
 }
 
-// BenchmarkTeamBuilder_Calculate тестирует производительность распределения команд
+// BenchmarkTeamBuilder_Calculate тестирует производительность распределения команд.
 // Замеряет время выполнения для различных входных данных
 func BenchmarkTeamBuilder_Calculate(b *testing.B) {
 	c := &TeamBuilder{}
@@ -198,6 +205,12 @@ func BenchmarkTeamBuilder_Calculate(b *testing.B) {
 	// Запуск бенчмарка
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c.Calculate(players, 5, constraints)
+		// Создание конфигурации
+		config := &TeamConfiguration{
+			Players:     players,
+			Constraints: constraints,
+			TeamSize:    5,
+		}
+		c.Build(config)
 	}
 }

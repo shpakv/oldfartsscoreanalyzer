@@ -9,12 +9,13 @@ import (
 // Основная задача - справедливое распределение игроков с учетом их индивидуальных характеристик
 type TeamBuilder struct{}
 
-// Calculate выполняет распределение игроков по командам
+// Build выполняет распределение игроков по командам
 //
 // Параметры:
+//   - config: объект конфигурации, который содержит:
 //   - players: полный список игроков
-//   - teamSize: максимальный размер каждой команды
 //   - constraints: список ограничений для распределения
+//   - teamSize: максимальный размер каждой команды
 //
 // Возвращает:
 //   - Две команды с оптимальным распределением игроков
@@ -30,11 +31,14 @@ type TeamBuilder struct{}
 //  3. Проверка ограничений на каждом шаге
 //  4. Выбор оптимального варианта
 //
-// Сложность алгоритма: O(2^n), где n - количество игроков
+// Сложность алгоритма: O(2^n), где n - количество игроков.
 // Подходит для небольших составов (до 20-30 игроков)
-func (b *TeamBuilder) Calculate(players Team, teamSize int, constraints []Constraint) (Team, Team) {
+func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
+	players := config.Players
+	constraints := config.Constraints
+	teamSize := config.TeamSize
 	// Сортируем игроков по убыванию веса
-	sort.Slice(players, func(i, j int) bool {
+	sort.Slice(config.Players, func(i, j int) bool {
 		return players[i].Score > players[j].Score
 	})
 
@@ -128,9 +132,9 @@ func (b *TeamBuilder) Calculate(players Team, teamSize int, constraints []Constr
 //
 // Возвращает:
 //   - true, если игрок есть в команде
-//   - false, если игрок отсутствует
+//   - false, если игрок отсутствует.
 //
-// Используется для проверки ограничений при распределении
+// Используется для проверки ограничений при распределении.
 func playerInTeam(team Team, playerName string) bool {
 	for _, player := range team {
 		if player.Name == playerName {
