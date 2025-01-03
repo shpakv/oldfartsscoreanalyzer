@@ -1,7 +1,6 @@
 package playerrating
 
 import (
-	"fmt"
 	"math"
 	"oldfartscounter/internal/player"
 	"sort"
@@ -20,7 +19,6 @@ func (c *Calculator) ApplyForRange(p player.Player, timeRange time.Time, default
 	}
 
 	recentGames := c.recentGames(p, timeRange)
-	fmt.Println(fmt.Sprintf("Recent games count: %d", len(recentGames)))
 
 	finalScore := 0.0
 	weights := []float64{0.5, 0.3, 0.2}
