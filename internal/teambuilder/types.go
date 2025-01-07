@@ -3,9 +3,9 @@ package teambuilder
 // TeamPlayer представляет игрока с его индивидуальными характеристиками.
 // Содержит имя и вес (или рейтинг) игрока.
 type TeamPlayer struct {
-	// Name - уникальный идентификатор игрока.
+	// NickName - уникальный идентификатор игрока.
 	// Используется для применения ограничений и идентификации.
-	Name string `json:"name"`
+	NickName string `json:"nickName"`
 
 	// Score - количественная характеристика игрока.
 	// Может представлять собой рейтинг, навыки или другой числовой показатель.
@@ -56,5 +56,12 @@ type Constraints []Constraint
 type TeamConfiguration struct {
 	Players     Team        `json:"players"`
 	Constraints Constraints `json:"constraints"`
-	TeamSize    int         `json:"teamSize"`
+}
+
+func (t Team) Score() float64 {
+	score := 0.0
+	for _, player := range t {
+		score += player.Score
+	}
+	return score
 }

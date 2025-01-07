@@ -146,11 +146,11 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 				// Дополнительная отладочная информация
 				t.Logf("Team 1:")
 				for _, player := range team1 {
-					t.Logf("%s (%.2f)", player.Name, player.Score)
+					t.Logf("%s (%.2f)", player.NickName, player.Score)
 				}
 				t.Logf("Team 2:")
 				for _, player := range team2 {
-					t.Logf("%s (%.2f)", player.Name, player.Score)
+					t.Logf("%s (%.2f)", player.NickName, player.Score)
 				}
 			}
 		})
@@ -162,7 +162,7 @@ func printTeamDetails(t *testing.T, team1, team2 Team) {
 	t.Log("=== Team 1 ===")
 	totalWeight1 := 0.0
 	for _, player := range team1 {
-		t.Logf("%s (%.2f)", player.Name, player.Score)
+		t.Logf("%s (%.2f)", player.NickName, player.Score)
 		totalWeight1 += player.Score
 	}
 	t.Logf("= Total Score %.2f =\n", totalWeight1)
@@ -170,7 +170,7 @@ func printTeamDetails(t *testing.T, team1, team2 Team) {
 	t.Log("=== Team 2 ===")
 	totalWeight2 := 0.0
 	for _, player := range team2 {
-		t.Logf("%s (%.2f)", player.Name, player.Score)
+		t.Logf("%s (%.2f)", player.NickName, player.Score)
 		totalWeight2 += player.Score
 	}
 	t.Logf("= Total Score: %.2f =", totalWeight2)

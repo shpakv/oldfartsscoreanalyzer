@@ -15,7 +15,6 @@ type TeamBuilder struct{}
 //   - config: объект конфигурации, который содержит:
 //   - players: полный список игроков
 //   - constraints: список ограничений для распределения
-//   - teamSize: максимальный размер каждой команды
 //
 // Возвращает:
 //   - Две команды с оптимальным распределением игроков
@@ -36,7 +35,8 @@ type TeamBuilder struct{}
 func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	players := config.Players
 	constraints := config.Constraints
-	teamSize := config.TeamSize
+	teamSize := len(config.Players) / 2
+
 	// Сортируем игроков по убыванию веса
 	sort.Slice(config.Players, func(i, j int) bool {
 		return players[i].Score > players[j].Score
@@ -137,7 +137,7 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 // Используется для проверки ограничений при распределении.
 func playerInTeam(team Team, playerName string) bool {
 	for _, player := range team {
-		if player.Name == playerName {
+		if player.NickName == playerName {
 			return true
 		}
 	}

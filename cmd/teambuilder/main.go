@@ -3,17 +3,14 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
-	"math"
+	"oldfartscounter/internal/environment"
 	"oldfartscounter/internal/teambuilder"
+	"oldfartscounter/internal/telegram"
 	"os"
 )
 
-var score *bool
-
 func main() {
-	score = flag.Bool("s", false, "show player score")
 	filePath := flag.String("f", "", "Path to the configuration.json file")
 
 	flag.Parse()
@@ -36,27 +33,16 @@ func main() {
 	}
 
 	b := &teambuilder.TeamBuilder{}
-
 	team1, team2 := b.Build(&config)
 
-	totalWeight1 := teamWeight(team1, "Team 1")
-	totalWeight2 := teamWeight(team2, "Team 2")
-
-	fmt.Printf("*** Score Difference: %.2f ***\n", math.Abs(totalWeight1-totalWeight2))
-}
-
-func teamWeight(team teambuilder.Team, name string) float64 {
-	fmt.Println(name)
-	totalWeight := 0.0
-	for _, player := range team {
-		if *score {
-			fmt.Printf("%s (%.2f)\n", player.Name, player.Score)
-		} else {
-			fmt.Printf("%s \n", player.Name)
-		}
-		totalWeight += player.Score
+	bot := &telegram.Bot{
+		Id:    environment.GetVariable("TELEGRAM_BOT_ID"),
+		Name:  environment.GetVariable("TELEGRAM_BOT_NAME"),
+		Token: environment.GetVariable("TELEGRAM_BOT_TOKEN"),
 	}
-	fmt.Printf("Total Score: %.2f\n\n", totalWeight)
-
-	return totalWeight
+	n := telegram.NewNotifier(bot, environment.GetVariable("TELEGRAM_CHAT_ID"))
+	err = n.NotifyOldFarts(team1, team2)
+	if err != nil {
+		log.Fatalf("Failed to notify old farts: %v", err)
+	}
 }
