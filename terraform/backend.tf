@@ -1,5 +1,5 @@
 // S3 стейт
-module "s3_state_bucket" {
+module "s3_bucket_state" {
   source = "terraform-aws-modules/s3-bucket/aws"
   bucket = join("-", [var.namespace, "terraform-state"])
 
