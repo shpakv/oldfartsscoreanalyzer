@@ -24,6 +24,25 @@ build() {
     done
 }
 
+terInit() {
+  terraform -chdir=./terraform init
+}
+
+plan() {
+  terInit
+  terraform -chdir=./terraform plan
+}
+
+deploy() {
+  terInit
+  terraform -chdir=./terraform apply -auto-approve
+}
+
+destroy() {
+  terInit
+  terraform -chdir=./terraform destroy -auto-approve
+}
+
 ###############################################################################
 # private functions
 ###############################################################################
