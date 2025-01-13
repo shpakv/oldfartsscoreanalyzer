@@ -35,8 +35,10 @@ type TeamBuilder struct{}
 func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	players := config.Players
 	constraints := config.Constraints
-	teamSize := len(config.Players) / 2
-
+	teamSize := len(players) / 2
+	if len(players)%2 != 0 {
+		teamSize++
+	}
 	// Сортируем игроков по убыванию веса
 	sort.Slice(config.Players, func(i, j int) bool {
 		return players[i].Score > players[j].Score

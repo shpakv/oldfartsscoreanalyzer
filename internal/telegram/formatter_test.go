@@ -31,7 +31,7 @@ func TestFormatter_Format(t *testing.T) {
 		ScoreDifference: "1000.00",
 	}
 
-	f := &Formatter{}
+	f := &TeamTableFormatter{}
 	formatted := f.Format(table)
 	fmt.Println(formatted)
 
