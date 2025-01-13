@@ -15,3 +15,7 @@ func GetVariable(key string, defaultValue ...string) (value string) {
 	}
 	return value
 }
+
+func GetNamespace() string {
+	return "oldfarts"
+}
