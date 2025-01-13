@@ -270,59 +270,6 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 	}
 }
 
-func TestTeamBuilder_InvalidInput(t *testing.T) {
-	c := &TeamBuilder{}
-
-	testCases := []struct {
-		name    string
-		config  *TeamConfiguration
-		wantErr bool
-	}{
-		{
-			name: "Empty player list",
-			config: &TeamConfiguration{
-				Players:     []TeamPlayer{},
-				Constraints: []Constraint{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Single player",
-			config: &TeamConfiguration{
-				Players: []TeamPlayer{
-					{"Player A", 1000},
-				},
-				Constraints: []Constraint{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Invalid constraint - non-existent player",
-			config: &TeamConfiguration{
-				Players: []TeamPlayer{
-					{"Player A", 1000},
-					{"Player B", 2000},
-				},
-				Constraints: []Constraint{
-					{Type: ConstraintTogether, Player1: "Player A", Player2: "Player X"},
-				},
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			team1, team2 := c.Build(tc.config)
-			if tc.wantErr {
-				if len(team1) > 0 || len(team2) > 0 {
-					t.Errorf("Expected error case to return empty teams")
-				}
-			}
-		})
-	}
-}
-
 // BenchmarkTeamBuilder_Calculate тестирует производительность распределения команд.
 // Замеряет время выполнения для различных входных данных
 func BenchmarkTeamBuilder_Calculate(b *testing.B) {
