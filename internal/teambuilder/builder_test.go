@@ -17,7 +17,6 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 	testCases := []struct {
 		name        string                       // Название тестового сценария
 		players     Team                         // Список игроков
-		teamSize    int                          // Размер каждой команды
 		constraints []Constraint                 // Ограничения на распределение
 		wantCheck   func(team1, team2 Team) bool // Функция проверки результата
 	}{
@@ -36,7 +35,6 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 				{"Player I", 1936.04},
 				{"Player J", 1905.34},
 			},
-			teamSize:    5,
 			constraints: []Constraint{},
 			wantCheck: func(team1, team2 Team) bool {
 				// Проверка размера команд
@@ -74,7 +72,6 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 				{"Player I", 1936.04},
 				{"Player J", 1905.34},
 			},
-			teamSize: 5,
 			constraints: []Constraint{
 				{Type: ConstraintTogether, Player1: "Player I", Player2: "Player G"},
 			},
@@ -105,7 +102,6 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 				{"Player I", 1936.04},
 				{"Player J", 1905.34},
 			},
-			teamSize: 5,
 			constraints: []Constraint{
 				{Type: ConstraintSeparate, Player1: "Player G", Player2: "Player H"},
 			},
@@ -130,7 +126,6 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 			config := &TeamConfiguration{
 				Players:     tc.players,
 				Constraints: tc.constraints,
-				TeamSize:    tc.teamSize,
 			}
 
 			// Распределение команд
@@ -209,7 +204,6 @@ func BenchmarkTeamBuilder_Calculate(b *testing.B) {
 		config := &TeamConfiguration{
 			Players:     players,
 			Constraints: constraints,
-			TeamSize:    5,
 		}
 		c.Build(config)
 	}
