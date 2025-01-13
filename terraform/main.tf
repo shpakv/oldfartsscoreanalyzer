@@ -4,7 +4,7 @@ provider "aws" {
 
 locals {
   defaultTags = {
-    "Manually"  = "alse"
+    "Manually"  = "false"
     "Terraform" = "true"
     "Group"     = "OldFarts"
     "Project"   = "OldFartsANALyzer"

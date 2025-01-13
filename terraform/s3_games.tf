@@ -1,7 +1,7 @@
 locals {
   S3GamesFolders = {
-    logs        = "logs"
-    screenshots = "screenshots"
+    logs        = "logs/"
+    screenshots = "screenshots/"
   }
 }
 
