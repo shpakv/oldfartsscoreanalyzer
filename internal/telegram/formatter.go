@@ -9,14 +9,14 @@ import (
 // Set a maximum length for strings (e.g., 15 characters)
 const maxStringLength = 15
 
-type Formatter struct {
+type TeamTableFormatter struct {
 }
 
-func NewFormatter() *Formatter {
-	return &Formatter{}
+func NewTeamTableFormatter() *TeamTableFormatter {
+	return &TeamTableFormatter{}
 }
 
-func (f *Formatter) Format(table *teamtable.TeamTable) string {
+func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	// Find the longest string in each column
 	colWidths := make([]int, len(table.Headers))
 	for i, header := range table.Headers {
