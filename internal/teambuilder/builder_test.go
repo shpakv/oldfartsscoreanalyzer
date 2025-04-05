@@ -142,7 +142,7 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 					return false
 				}
 				// Проверка баланса
-				weightDiff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+				weightDiff := math.Abs(team1.Score() - team2.Score())
 				return weightDiff < 150 // Увеличенный порог для нечетного случая
 			},
 		},
@@ -221,7 +221,7 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 				if math.Abs(float64(len(team1)-len(team2))) > 1 {
 					return false
 				}
-				return math.Abs(getTeamScore(team1)-getTeamScore(team2)) == 1000
+				return math.Abs(team1.Score()-team2.Score()) == 1000
 			},
 		},
 		{
@@ -235,7 +235,48 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 			},
 			constraints: []Constraint{},
 			wantCheck: func(team1, team2 Team) bool {
-				return math.Abs(getTeamScore(team1)-getTeamScore(team2)) < 1000
+				return math.Abs(team1.Score()-team2.Score()) < 1000
+			},
+		},
+		{
+			name: "Multiple 'together' constraints forming a chain",
+			players: []TeamPlayer{
+				{"Player A", 1000},
+				{"Player B", 1200},
+				{"Player C", 1400},
+				{"Player D", 1600},
+				{"Player E", 1800},
+				{"Player F", 2000},
+			},
+			constraints: []Constraint{
+				{Type: ConstraintTogether, Player1: "Player A", Player2: "Player B"},
+				{Type: ConstraintTogether, Player1: "Player B", Player2: "Player C"},
+				{Type: ConstraintTogether, Player1: "Player C", Player2: "Player D"},
+			},
+			wantCheck: func(team1, team2 Team) bool {
+				// Check if all chained players are in the same team
+				chainedPlayers := []string{"Player A", "Player B", "Player C", "Player D"}
+				inTeam1 := playerInTeam(team1, chainedPlayers[0])
+				inTeam2 := playerInTeam(team2, chainedPlayers[0])
+
+				if inTeam1 {
+					for _, player := range chainedPlayers {
+						if !playerInTeam(team1, player) {
+							return false
+						}
+					}
+				} else if inTeam2 {
+					for _, player := range chainedPlayers {
+						if !playerInTeam(team2, player) {
+							return false
+						}
+					}
+				} else {
+					return false
+				}
+
+				// Check if teams are balanced
+				return math.Abs(team1.Score()-team2.Score()) < 500
 			},
 		},
 	}

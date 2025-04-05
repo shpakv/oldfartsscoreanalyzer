@@ -75,7 +75,7 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	// Метод 1: Начальное распределение с учетом связанных игроков
 	team1, team2 := distributeWithLinkedPlayers(players, linkedPlayers)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
 			bestTeam1, bestTeam2 = team1, team2
@@ -85,7 +85,7 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	// Метод 2: Распределение змейкой
 	team1, team2 = distributeSnake(players)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
 			bestTeam1, bestTeam2 = team1, team2
@@ -95,7 +95,7 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	// Метод 3: Распределение парами
 	team1, team2 = distributePairs(players)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
 			bestTeam1, bestTeam2 = team1, team2
@@ -105,7 +105,7 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	// Метод 4: Жадное распределение
 	team1, team2 = distributeGreedy(players)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
 			bestTeam1, bestTeam2 = team1, team2
@@ -122,21 +122,6 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	// и пытаемся его оптимизировать
 	team1, team2 = distributeGreedy(players)
 	return optimizeTeams(team1, team2, constraints)
-}
-
-// getTeamScore вычисляет суммарный рейтинг команды.
-//
-// Параметры:
-//   - team Team: команда для подсчета рейтинга
-//
-// Возвращает:
-//   - float64: суммарный рейтинг всех игроков команды
-func getTeamScore(team Team) float64 {
-	score := 0.0
-	for _, player := range team {
-		score += player.Score
-	}
-	return score
 }
 
 // isConstraintSatisfied проверяет соответствие распределения игроков заданным ограничениям.
@@ -185,7 +170,7 @@ func distributeSnake(players []TeamPlayer) (Team, Team) {
 
 	for i := 0; i < len(players); i += 2 {
 		if i+1 < len(players) {
-			if getTeamScore(team1) <= getTeamScore(team2) {
+			if team1.Score() <= team2.Score() {
 				team1 = append(team1, players[i])
 				team2 = append(team2, players[i+1])
 			} else {
@@ -193,7 +178,7 @@ func distributeSnake(players []TeamPlayer) (Team, Team) {
 				team1 = append(team1, players[i+1])
 			}
 		} else {
-			if getTeamScore(team1) <= getTeamScore(team2) {
+			if team1.Score() <= team2.Score() {
 				team1 = append(team1, players[i])
 			} else {
 				team2 = append(team2, players[i])
@@ -215,43 +200,55 @@ func distributeWithLinkedPlayers(players []TeamPlayer, linkedPlayers map[string]
 	used := make(map[string]bool)
 
 	// Сначала распределяем связанных игроков
-	for i := 0; i < len(players); i++ {
-		if used[players[i].NickName] {
+	for _, player := range players {
+		if used[player.NickName] {
 			continue
 		}
 
-		if linked, ok := linkedPlayers[players[i].NickName]; ok {
+		linkedNick, hasLink := linkedPlayers[player.NickName]
+		if hasLink {
+			// Находим напарника
 			var linkedPlayer TeamPlayer
+			found := false
 			for _, p := range players {
-				if p.NickName == linked {
+				if p.NickName == linkedNick {
 					linkedPlayer = p
+					found = true
 					break
 				}
 			}
 
-			if getTeamScore(team1) <= getTeamScore(team2) {
-				team1 = append(team1, players[i], linkedPlayer)
-			} else {
-				team2 = append(team2, players[i], linkedPlayer)
+			// Если напарник не найден (хотя должен быть), пропускаем
+			if !found || used[linkedNick] {
+				continue
 			}
 
-			used[players[i].NickName] = true
-			used[linked] = true
+			// Добавляем их в команду с меньшим счетом
+			if team1.Score() <= team2.Score() {
+				team1 = append(team1, player, linkedPlayer)
+			} else {
+				team2 = append(team2, player, linkedPlayer)
+			}
+
+			// Отмечаем обоих как использованных
+			used[player.NickName] = true
+			used[linkedNick] = true
 		}
 	}
 
 	// Распределяем оставшихся игроков
-	for i := 0; i < len(players); i++ {
-		if used[players[i].NickName] {
+	for _, player := range players {
+		if used[player.NickName] {
 			continue
 		}
 
-		if getTeamScore(team1) <= getTeamScore(team2) && len(team1) < teamSize {
-			team1 = append(team1, players[i])
+		if len(team1) < teamSize && team1.Score() <= team2.Score() {
+			team1 = append(team1, player)
 		} else {
-			team2 = append(team2, players[i])
+			team2 = append(team2, player)
 		}
-		used[players[i].NickName] = true
+
+		used[player.NickName] = true
 	}
 
 	return team1, team2
@@ -271,7 +268,7 @@ func distributePairs(players []TeamPlayer) (Team, Team) {
 	team2 := make(Team, 0, teamSize)
 
 	for i := 0; i < len(players)/2; i++ {
-		if getTeamScore(team1) <= getTeamScore(team2) {
+		if team1.Score() <= team2.Score() {
 			team1 = append(team1, players[i])
 			team2 = append(team2, players[len(players)-1-i])
 		} else {
@@ -282,7 +279,7 @@ func distributePairs(players []TeamPlayer) (Team, Team) {
 
 	// Если осталось нечетное количество игроков
 	if len(players)%2 != 0 {
-		if getTeamScore(team1) <= getTeamScore(team2) {
+		if team1.Score() <= team2.Score() {
 			team1 = append(team1, players[len(players)/2])
 		} else {
 			team2 = append(team2, players[len(players)/2])
@@ -309,7 +306,7 @@ func distributeGreedy(players []TeamPlayer) (Team, Team) {
 	team2 := make(Team, 0, teamSize)
 
 	for _, player := range players {
-		if getTeamScore(team1) <= getTeamScore(team2) && len(team1) < teamSize {
+		if team1.Score() <= team2.Score() && len(team1) < teamSize {
 			team1 = append(team1, player)
 		} else {
 			team2 = append(team2, player)
@@ -334,7 +331,7 @@ func distributeGreedy(players []TeamPlayer) (Team, Team) {
 //   - Сохраняет все ограничения при обмене игроками
 func optimizeTeams(team1, team2 Team, constraints []Constraint) (Team, Team) {
 	bestTeam1, bestTeam2 := team1, team2
-	bestDiff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+	bestDiff := math.Abs(team1.Score() - team2.Score())
 
 	for attempt := 0; attempt < 3; attempt++ {
 		improved := false
@@ -352,7 +349,7 @@ func optimizeTeams(team1, team2 Team, constraints []Constraint) (Team, Team) {
 					continue
 				}
 
-				newDiff := math.Abs(getTeamScore(newTeam1) - getTeamScore(newTeam2))
+				newDiff := math.Abs(newTeam1.Score() - newTeam2.Score())
 				if newDiff < bestDiff {
 					bestDiff = newDiff
 					copy(bestTeam1, newTeam1)
