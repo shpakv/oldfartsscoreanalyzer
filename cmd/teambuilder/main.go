@@ -16,7 +16,7 @@ func main() {
 	f := telegram.NewTeamTableFormatter()
 	notifiers := []notifier.Notifier{
 		notifier.NewConsoleNotifier(f),
-		//telegram.NewNotifier(apiHandler(), f),
+		telegram.NewNotifier(apiHandler(), f),
 	}
 	teamBuilder := &teambuilder.TeamBuilder{}
 	team1, team2 := teamBuilder.Build(c)
@@ -29,7 +29,7 @@ func main() {
 }
 
 func config() *teambuilder.TeamConfiguration {
-	filePath := flag.String("c", "bin/config.json5", "Path to the config.json file")
+	filePath := flag.String("c", "config.json5", "Path to the config.json file")
 	flag.Parse()
 	if *filePath == "" {
 		log.Fatal("Please provide a file path using the -c flag")
