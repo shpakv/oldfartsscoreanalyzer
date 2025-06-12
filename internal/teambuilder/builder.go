@@ -54,6 +54,11 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	players := config.Players
 	constraints := config.Constraints
 
+	// Проверка на пустой список игроков
+	if len(players) == 0 {
+		return Team{}, Team{}
+	}
+
 	// Сначала обработаем ограничения типа ConstraintTogether
 	linkedPlayers := make(map[string]string)
 	for _, constraint := range constraints {
@@ -68,54 +73,65 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 		return players[i].Score > players[j].Score
 	})
 
-	// Пробуем все три метода распределения и выбираем лучший результат
+	// Пробуем все методы распределения и выбираем лучший результат
 	var bestTeam1, bestTeam2 Team
 	bestDiff := math.Inf(1)
 
 	// Метод 1: Начальное распределение с учетом связанных игроков
 	team1, team2 := distributeWithLinkedPlayers(players, linkedPlayers)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
-			bestTeam1, bestTeam2 = team1, team2
+			bestTeam1 = make(Team, len(team1))
+			bestTeam2 = make(Team, len(team2))
+			copy(bestTeam1, team1)
+			copy(bestTeam2, team2)
 		}
 	}
 
 	// Метод 2: Распределение змейкой
 	team1, team2 = distributeSnake(players)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
-			bestTeam1, bestTeam2 = team1, team2
+			bestTeam1 = make(Team, len(team1))
+			bestTeam2 = make(Team, len(team2))
+			copy(bestTeam1, team1)
+			copy(bestTeam2, team2)
 		}
 	}
 
 	// Метод 3: Распределение парами
 	team1, team2 = distributePairs(players)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
-			bestTeam1, bestTeam2 = team1, team2
+			bestTeam1 = make(Team, len(team1))
+			bestTeam2 = make(Team, len(team2))
+			copy(bestTeam1, team1)
+			copy(bestTeam2, team2)
 		}
 	}
 
 	// Метод 4: Жадное распределение
 	team1, team2 = distributeGreedy(players)
 	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+		diff := math.Abs(team1.Score() - team2.Score())
 		if diff < bestDiff {
 			bestDiff = diff
-			bestTeam1, bestTeam2 = team1, team2
+			bestTeam1 = make(Team, len(team1))
+			bestTeam2 = make(Team, len(team2))
+			copy(bestTeam1, team1)
+			copy(bestTeam2, team2)
 		}
 	}
 
 	// Если нашли хотя бы одно валидное решение, оптимизируем его
 	if bestDiff != math.Inf(1) {
-		bestTeam1, bestTeam2 = optimizeTeams(bestTeam1, bestTeam2, constraints)
-		return bestTeam1, bestTeam2
+		return optimizeTeams(bestTeam1, bestTeam2, constraints)
 	}
 
 	// Если не нашли валидного решения, возвращаем результат жадного алгоритма
@@ -147,22 +163,26 @@ func getTeamScore(team Team) float64 {
 //
 // Возвращает:
 //   - bool: true если все ограничения соблюдены, false в противном случае
-func isConstraintSatisfied(team1, team2 Team, constraints []Constraint) bool {
+func isConstraintSatisfied(team1, team2 Team, constraints Constraints) bool {
 	for _, constraint := range constraints {
 		player1InTeam1 := playerInTeam(team1, constraint.Player1)
 		player1InTeam2 := playerInTeam(team2, constraint.Player1)
 		player2InTeam1 := playerInTeam(team1, constraint.Player2)
 		player2InTeam2 := playerInTeam(team2, constraint.Player2)
 
+		// Проверяем, что оба игрока существуют
+		if (!player1InTeam1 && !player1InTeam2) || (!player2InTeam1 && !player2InTeam2) {
+			// Пропускаем ограничение, если один из игроков не существует
+			continue
+		}
+
 		switch constraint.Type {
 		case ConstraintTogether:
-			if (player1InTeam1 && !player2InTeam1) ||
-				(player1InTeam2 && !player2InTeam2) {
+			if (player1InTeam1 && player2InTeam2) || (player1InTeam2 && player2InTeam1) {
 				return false
 			}
 		case ConstraintSeparate:
-			if (player1InTeam1 && player2InTeam1) ||
-				(player1InTeam2 && player2InTeam2) {
+			if (player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2) {
 				return false
 			}
 		}
@@ -204,7 +224,7 @@ func distributeSnake(players []TeamPlayer) (Team, Team) {
 }
 
 // Вспомогательная функция для распределения с учетом связанных игроков
-func distributeWithLinkedPlayers(players []TeamPlayer, linkedPlayers map[string]string) (Team, Team) {
+func distributeWithLinkedPlayers(players Team, linkedPlayers map[string]string) (Team, Team) {
 	teamSize := len(players) / 2
 	if len(players)%2 != 0 {
 		teamSize++
@@ -214,29 +234,36 @@ func distributeWithLinkedPlayers(players []TeamPlayer, linkedPlayers map[string]
 	team2 := make(Team, 0, teamSize)
 	used := make(map[string]bool)
 
-	// Сначала распределяем связанных игроков
-	for i := 0; i < len(players); i++ {
-		if used[players[i].NickName] {
+	// Создаем карту для быстрого поиска игроков по имени
+	playerMap := make(map[string]TeamPlayer)
+	for _, p := range players {
+		playerMap[p.NickName] = p
+	}
+
+	// Находим группы связанных игроков (компоненты связности)
+	groups := findConnectedGroups(players, linkedPlayers)
+
+	// Распределяем группы связанных игроков
+	for _, group := range groups {
+		// Собираем игроков из группы
+		groupPlayers := make([]TeamPlayer, 0, len(group))
+		for _, name := range group {
+			if player, ok := playerMap[name]; ok {
+				groupPlayers = append(groupPlayers, player)
+				used[name] = true
+			}
+		}
+
+		// Если группа пустая, пропускаем
+		if len(groupPlayers) == 0 {
 			continue
 		}
 
-		if linked, ok := linkedPlayers[players[i].NickName]; ok {
-			var linkedPlayer TeamPlayer
-			for _, p := range players {
-				if p.NickName == linked {
-					linkedPlayer = p
-					break
-				}
-			}
-
-			if getTeamScore(team1) <= getTeamScore(team2) {
-				team1 = append(team1, players[i], linkedPlayer)
-			} else {
-				team2 = append(team2, players[i], linkedPlayer)
-			}
-
-			used[players[i].NickName] = true
-			used[linked] = true
+		// Распределяем всю группу в одну команду
+		if team1.Score() <= team2.Score() && len(team1)+len(groupPlayers) <= teamSize {
+			team1 = append(team1, groupPlayers...)
+		} else {
+			team2 = append(team2, groupPlayers...)
 		}
 	}
 
@@ -246,7 +273,7 @@ func distributeWithLinkedPlayers(players []TeamPlayer, linkedPlayers map[string]
 			continue
 		}
 
-		if getTeamScore(team1) <= getTeamScore(team2) && len(team1) < teamSize {
+		if team1.Score() <= team2.Score() && len(team1) < teamSize {
 			team1 = append(team1, players[i])
 		} else {
 			team2 = append(team2, players[i])
@@ -255,6 +282,54 @@ func distributeWithLinkedPlayers(players []TeamPlayer, linkedPlayers map[string]
 	}
 
 	return team1, team2
+}
+
+// findConnectedGroups находит группы связанных игроков (компоненты связности в графе)
+func findConnectedGroups(players Team, linkedPlayers map[string]string) [][]string {
+	// Создаем граф связей между игроками
+	graph := make(map[string][]string)
+	for _, player := range players {
+		graph[player.NickName] = []string{}
+	}
+
+	// Заполняем граф связями
+	for player, linked := range linkedPlayers {
+		// Проверяем, что оба игрока существуют
+		if _, ok := graph[player]; ok {
+			if _, ok := graph[linked]; ok {
+				graph[player] = append(graph[player], linked)
+				graph[linked] = append(graph[linked], player)
+			}
+		}
+	}
+
+	// Находим компоненты связности с помощью поиска в глубину
+	visited := make(map[string]bool)
+	var groups [][]string
+
+	for player := range graph {
+		if !visited[player] {
+			group := []string{}
+			dfs(player, graph, visited, &group)
+			if len(group) > 0 {
+				groups = append(groups, group)
+			}
+		}
+	}
+
+	return groups
+}
+
+// dfs выполняет поиск в глубину для нахождения всех связанных игроков
+func dfs(player string, graph map[string][]string, visited map[string]bool, group *[]string) {
+	visited[player] = true
+	*group = append(*group, player)
+
+	for _, neighbor := range graph[player] {
+		if !visited[neighbor] {
+			dfs(neighbor, graph, visited, group)
+		}
+	}
 }
 
 // distributePairs реализует распределение игроков парами.
@@ -332,29 +407,35 @@ func distributeGreedy(players []TeamPlayer) (Team, Team) {
 //   - Выполняет до 3 попыток оптимизации
 //   - Прекращает оптимизацию, если улучшение не достигнуто
 //   - Сохраняет все ограничения при обмене игроками
-func optimizeTeams(team1, team2 Team, constraints []Constraint) (Team, Team) {
-	bestTeam1, bestTeam2 := team1, team2
-	bestDiff := math.Abs(getTeamScore(team1) - getTeamScore(team2))
+func optimizeTeams(team1, team2 Team, constraints Constraints) (Team, Team) {
+	bestTeam1 := make(Team, len(team1))
+	bestTeam2 := make(Team, len(team2))
+	copy(bestTeam1, team1)
+	copy(bestTeam2, team2)
+	bestDiff := math.Abs(bestTeam1.Score() - bestTeam2.Score())
 
 	for attempt := 0; attempt < 3; attempt++ {
 		improved := false
 
-		for i := 0; i < len(team1); i++ {
-			for j := 0; j < len(team2); j++ {
-				newTeam1 := make(Team, len(team1))
-				newTeam2 := make(Team, len(team2))
+		for i := 0; i < len(bestTeam1); i++ {
+			for j := 0; j < len(bestTeam2); j++ {
+				// Создаем копии текущих лучших команд
+				newTeam1 := make(Team, len(bestTeam1))
+				newTeam2 := make(Team, len(bestTeam2))
 				copy(newTeam1, bestTeam1)
 				copy(newTeam2, bestTeam2)
 
+				// Меняем игроков местами
 				newTeam1[i], newTeam2[j] = newTeam2[j], newTeam1[i]
 
 				if !isConstraintSatisfied(newTeam1, newTeam2, constraints) {
 					continue
 				}
 
-				newDiff := math.Abs(getTeamScore(newTeam1) - getTeamScore(newTeam2))
+				newDiff := math.Abs(newTeam1.Score() - newTeam2.Score())
 				if newDiff < bestDiff {
 					bestDiff = newDiff
+					// Обновляем лучшие команды
 					copy(bestTeam1, newTeam1)
 					copy(bestTeam2, newTeam2)
 					improved = true
