@@ -2,6 +2,8 @@ package teambuilder
 
 import (
 	"math"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -345,5 +347,407 @@ func BenchmarkTeamBuilder_Calculate(b *testing.B) {
 			Constraints: constraints,
 		}
 		c.Build(config)
+	}
+}
+
+// Вспомогательные функции для тестов
+func sortTeamByName(team Team) Team {
+	sortedTeam := make(Team, len(team))
+	copy(sortedTeam, team)
+	sort.Slice(sortedTeam, func(i, j int) bool {
+		return sortedTeam[i].NickName < sortedTeam[j].NickName
+	})
+	return sortedTeam
+}
+
+func calculateTeamScoreDifference(team1, team2 Team) float64 {
+	return math.Abs(team1.Score() - team2.Score())
+}
+
+// Тест на базовое распределение без ограничений
+func TestBasicDistribution(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+		},
+		Constraints: Constraints{},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что все игроки распределены
+	if len(team1)+len(team2) != len(config.Players) {
+		t.Errorf("Not all players were distributed. Expected %d, got %d",
+			len(config.Players), len(team1)+len(team2))
+	}
+
+	// Проверяем, что команды примерно равны по силе
+	diff := calculateTeamScoreDifference(team1, team2)
+	if diff > 500 {
+		t.Errorf("Teams are not balanced. Score difference: %.2f", diff)
+	}
+}
+
+// Тест на ограничение ConstraintTogether
+func TestConstraintTogether(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintTogether, Player1: "Player1", Player2: "Player2"},
+		},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что игроки Player1 и Player2 находятся в одной команде
+	player1InTeam1 := playerInTeam(team1, "Player1")
+	player2InTeam1 := playerInTeam(team1, "Player2")
+	player1InTeam2 := playerInTeam(team2, "Player1")
+	player2InTeam2 := playerInTeam(team2, "Player2")
+
+	if !((player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2)) {
+		t.Errorf("ConstraintTogether not satisfied. Players should be in the same team")
+		t.Logf("Team1: %v", team1)
+		t.Logf("Team2: %v", team2)
+	}
+}
+
+// Тест на ограничение ConstraintSeparate
+func TestConstraintSeparate(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintSeparate, Player1: "Player1", Player2: "Player2"},
+		},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что игроки Player1 и Player2 находятся в разных командах
+	player1InTeam1 := playerInTeam(team1, "Player1")
+	player2InTeam1 := playerInTeam(team1, "Player2")
+	player1InTeam2 := playerInTeam(team2, "Player1")
+	player2InTeam2 := playerInTeam(team2, "Player2")
+
+	if (player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2) {
+		t.Errorf("ConstraintSeparate not satisfied. Players should be in different teams")
+		t.Logf("Team1: %v", team1)
+		t.Logf("Team2: %v", team2)
+	}
+}
+
+// Тест на множественные ограничения
+func TestMultipleConstraints(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+			{NickName: "Player5", Score: 1600},
+			{NickName: "Player6", Score: 1700},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintTogether, Player1: "Player1", Player2: "Player2"},
+			{Type: ConstraintSeparate, Player1: "Player3", Player2: "Player4"},
+			{Type: ConstraintTogether, Player1: "Player5", Player2: "Player6"},
+		},
+	}
+
+	team1, _ := builder.Build(config)
+
+	// Проверяем все ограничения
+	player1InTeam1 := playerInTeam(team1, "Player1")
+	player2InTeam1 := playerInTeam(team1, "Player2")
+	player3InTeam1 := playerInTeam(team1, "Player3")
+	player4InTeam1 := playerInTeam(team1, "Player4")
+	player5InTeam1 := playerInTeam(team1, "Player5")
+	player6InTeam1 := playerInTeam(team1, "Player6")
+
+	// Проверка ConstraintTogether для Player1 и Player2
+	if !((player1InTeam1 && player2InTeam1) || (!player1InTeam1 && !player2InTeam1)) {
+		t.Errorf("ConstraintTogether not satisfied for Player1 and Player2")
+	}
+
+	// Проверка ConstraintSeparate для Player3 и Player4
+	if (player3InTeam1 && player4InTeam1) || (!player3InTeam1 && !player4InTeam1) {
+		t.Errorf("ConstraintSeparate not satisfied for Player3 and Player4")
+	}
+
+	// Проверка ConstraintTogether для Player5 и Player6
+	if !((player5InTeam1 && player6InTeam1) || (!player5InTeam1 && !player6InTeam1)) {
+		t.Errorf("ConstraintTogether not satisfied for Player5 and Player6")
+	}
+}
+
+// Тест на конфликтующие ограничения
+func TestConflictingConstraints(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintTogether, Player1: "Player1", Player2: "Player2"},
+			{Type: ConstraintTogether, Player1: "Player2", Player2: "Player3"},
+			{Type: ConstraintSeparate, Player1: "Player1", Player2: "Player3"},
+		},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// В этом случае невозможно удовлетворить все ограничения
+	// Проверяем, что функция вернула какое-то решение
+	if len(team1)+len(team2) != len(config.Players) {
+		t.Errorf("Not all players were distributed with conflicting constraints")
+	}
+
+	// Логируем полученные команды для анализа
+	t.Logf("Team1: %v", team1)
+	t.Logf("Team2: %v", team2)
+}
+
+// Тест на нечетное количество игроков
+func TestOddNumberOfPlayers(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+			{NickName: "Player5", Score: 1600},
+		},
+		Constraints: Constraints{},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что все игроки распределены
+	if len(team1)+len(team2) != len(config.Players) {
+		t.Errorf("Not all players were distributed. Expected %d, got %d",
+			len(config.Players), len(team1)+len(team2))
+	}
+
+	// Проверяем, что размеры команд отличаются максимум на 1
+	if math.Abs(float64(len(team1)-len(team2))) > 1 {
+		t.Errorf("Teams are not balanced by size. Team1: %d, Team2: %d",
+			len(team1), len(team2))
+	}
+}
+
+// Тест на отсутствующих в ограничениях игроков
+func TestMissingPlayersInConstraints(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintTogether, Player1: "Player1", Player2: "NonExistentPlayer"},
+		},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что функция не паникует и возвращает какое-то решение
+	if len(team1)+len(team2) != len(config.Players) {
+		t.Errorf("Not all players were distributed with missing players in constraints")
+	}
+}
+
+// Тест на оптимизацию команд
+func TestTeamOptimization(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+			{NickName: "Player5", Score: 1600},
+			{NickName: "Player6", Score: 1700},
+		},
+		Constraints: Constraints{},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что разница в силе команд минимальна
+	diff := calculateTeamScoreDifference(team1, team2)
+
+	// Создаем команды вручную и проверяем, что алгоритм дает лучший или такой же результат
+	manualTeam1 := Team{
+		{NickName: "Player2", Score: 2000},
+		{NickName: "Player5", Score: 1600},
+		{NickName: "Player1", Score: 1000},
+	}
+	manualTeam2 := Team{
+		{NickName: "Player4", Score: 1800},
+		{NickName: "Player6", Score: 1700},
+		{NickName: "Player3", Score: 1500},
+	}
+
+	manualDiff := calculateTeamScoreDifference(manualTeam1, manualTeam2)
+
+	if diff > manualDiff+100 { // Допускаем небольшую погрешность
+		t.Errorf("Team optimization is not optimal. Got diff: %.2f, expected around: %.2f",
+			diff, manualDiff)
+		t.Logf("Team1: %v", team1)
+		t.Logf("Team2: %v", team2)
+	}
+}
+
+// Тест на пустой список игроков
+func TestEmptyPlayersList(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players:     Team{},
+		Constraints: Constraints{},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	if len(team1) != 0 || len(team2) != 0 {
+		t.Errorf("Expected empty teams for empty player list")
+	}
+}
+
+// Тест на идемпотентность - повторный запуск с теми же данными
+func TestIdempotence(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintTogether, Player1: "Player1", Player2: "Player2"},
+		},
+	}
+
+	team1First, team2First := builder.Build(config)
+	team1Second, team2Second := builder.Build(config)
+
+	// Сортируем команды для сравнения
+	sortedTeam1First := sortTeamByName(team1First)
+	sortedTeam2First := sortTeamByName(team2First)
+	sortedTeam1Second := sortTeamByName(team1Second)
+	sortedTeam2Second := sortTeamByName(team2Second)
+
+	// Проверяем, что результаты одинаковые или хотя бы эквивалентные по балансу
+	if !reflect.DeepEqual(sortedTeam1First, sortedTeam1Second) ||
+		!reflect.DeepEqual(sortedTeam2First, sortedTeam2Second) {
+		diffFirst := calculateTeamScoreDifference(team1First, team2First)
+		diffSecond := calculateTeamScoreDifference(team1Second, team2Second)
+
+		if math.Abs(diffFirst-diffSecond) > 100 {
+			t.Errorf("Algorithm is not idempotent. First run diff: %.2f, Second run diff: %.2f",
+				diffFirst, diffSecond)
+		}
+	}
+}
+
+// Тест на использование метода Team.Score() вместо getTeamScore
+func TestTeamScoreMethod(t *testing.T) {
+	team := Team{
+		{NickName: "Player1", Score: 1000},
+		{NickName: "Player2", Score: 2000},
+		{NickName: "Player3", Score: 1500},
+	}
+
+	// Проверяем, что метод Team.Score() возвращает то же значение, что и getTeamScore
+	methodScore := team.Score()
+	functionScore := getTeamScore(team)
+
+	if methodScore != functionScore {
+		t.Errorf("Team.Score() method returns different value than getTeamScore function. "+
+			"Method: %.2f, Function: %.2f", methodScore, functionScore)
+	}
+}
+
+// Тест на проверку обработки ограничений с несуществующими игроками
+func TestConstraintsWithNonexistentPlayers(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintTogether, Player1: "Player1", Player2: "NonExistentPlayer"},
+			{Type: ConstraintSeparate, Player1: "NonExistentPlayer1", Player2: "NonExistentPlayer2"},
+		},
+	}
+
+	// Функция не должна паниковать
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что все существующие игроки распределены
+	if len(team1)+len(team2) != len(config.Players) {
+		t.Errorf("Not all players were distributed. Expected %d, got %d",
+			len(config.Players), len(team1)+len(team2))
+	}
+}
+
+// Тест на обработку циклических зависимостей в ограничениях
+func TestCyclicConstraints(t *testing.T) {
+	builder := &TeamBuilder{}
+	config := &TeamConfiguration{
+		Players: Team{
+			{NickName: "Player1", Score: 1000},
+			{NickName: "Player2", Score: 2000},
+			{NickName: "Player3", Score: 1500},
+			{NickName: "Player4", Score: 1800},
+		},
+		Constraints: Constraints{
+			{Type: ConstraintTogether, Player1: "Player1", Player2: "Player2"},
+			{Type: ConstraintTogether, Player1: "Player2", Player2: "Player3"},
+			{Type: ConstraintTogether, Player1: "Player3", Player2: "Player1"},
+		},
+	}
+
+	team1, team2 := builder.Build(config)
+
+	// Проверяем, что все игроки распределены
+	if len(team1)+len(team2) != len(config.Players) {
+		t.Errorf("Not all players were distributed. Expected %d, got %d",
+			len(config.Players), len(team1)+len(team2))
+	}
+
+	// Проверяем, что все три игрока находятся в одной команде
+	player1InTeam1 := playerInTeam(team1, "Player1")
+	player2InTeam1 := playerInTeam(team1, "Player2")
+	player3InTeam1 := playerInTeam(team1, "Player3")
+
+	if !((player1InTeam1 && player2InTeam1 && player3InTeam1) ||
+		(!player1InTeam1 && !player2InTeam1 && !player3InTeam1)) {
+		t.Errorf("Cyclic ConstraintTogether not satisfied. Players 1, 2, and 3 should be in the same team")
+		t.Logf("Team1: %v", team1)
+		t.Logf("Team2: %v", team2)
 	}
 }

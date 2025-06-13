@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"fmt"
+	"math"
 	"oldfartscounter/internal/teamtable"
 	"strings"
 )
@@ -82,13 +83,42 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	sb.WriteString("|\n")
 	sb.WriteString(fmt.Sprintf("| %-*s | %-*s |\n", colWidths[0], "TS: "+table.TeamScore[0], colWidths[1], "TS: "+table.TeamScore[1]))
 
-	// Add final score difference as a single-row entry
-	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, "Diff: "+table.ScoreDifference))
+	// Calculate percentage difference
+	percentDiff := calculatePercentageDifference(table.TeamScore[0], table.TeamScore[1])
+
+	// Add final score difference as a single-row entry with percentage
+	diffText := fmt.Sprintf("Diff: %s (%s%%)", table.ScoreDifference, percentDiff)
+	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, diffText))
 
 	// Close telegram formatting
 	sb.WriteString("```\n")
 
 	return sb.String()
+}
+
+// calculatePercentageDifference calculates the percentage difference between two score strings
+func calculatePercentageDifference(score1, score2 string) string {
+	// Parse scores to float
+	var s1, s2 float64
+	fmt.Sscanf(score1, "%f", &s1)
+	fmt.Sscanf(score2, "%f", &s2)
+
+	// Avoid division by zero
+	if s1 == 0 && s2 == 0 {
+		return "0.0"
+	}
+
+	// Calculate average score
+	avgScore := (s1 + s2) / 2
+
+	// Calculate absolute difference
+	absDiff := math.Abs(s1 - s2)
+
+	// Calculate percentage difference relative to average
+	percentDiff := (absDiff / avgScore) * 100
+
+	// Format to one decimal place
+	return fmt.Sprintf("%.1f", percentDiff)
 }
 
 func truncateWithEllipsis(s string, maxLen int) string {
