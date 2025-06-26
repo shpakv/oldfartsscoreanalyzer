@@ -384,7 +384,22 @@ func distributeGreedy(players []TeamPlayer) (Team, Team) {
 	team2 := make(Team, 0, teamSize)
 
 	for _, player := range players {
-		if getTeamScore(team1) <= getTeamScore(team2) && len(team1) < teamSize {
+		// Calculate projected team scores including economic advantage
+		projTeam1 := append(Team{}, team1...)
+		projTeam1 = append(projTeam1, player)
+
+		projTeam2 := append(Team{}, team2...)
+		projTeam2 = append(projTeam2, player)
+
+		// Calculate effective scores for both scenarios
+		score1Team1, score1Team2 := getEffectiveTeamScore(projTeam1, team2)
+		score2Team1, score2Team2 := getEffectiveTeamScore(team1, projTeam2)
+
+		// Choose the option that minimizes score difference
+		diff1 := math.Abs(score1Team1 - score1Team2)
+		diff2 := math.Abs(score2Team1 - score2Team2)
+
+		if (diff1 <= diff2 && len(team1) < teamSize) || len(team2) >= teamSize {
 			team1 = append(team1, player)
 		} else {
 			team2 = append(team2, player)
@@ -412,30 +427,35 @@ func optimizeTeams(team1, team2 Team, constraints Constraints) (Team, Team) {
 	bestTeam2 := make(Team, len(team2))
 	copy(bestTeam1, team1)
 	copy(bestTeam2, team2)
-	bestDiff := math.Abs(bestTeam1.Score() - bestTeam2.Score())
+
+	// Calculate effective scores considering economic advantage
+	team1Score, team2Score := getEffectiveTeamScore(bestTeam1, bestTeam2)
+	bestDiff := math.Abs(team1Score - team2Score)
 
 	for attempt := 0; attempt < 3; attempt++ {
 		improved := false
 
 		for i := 0; i < len(bestTeam1); i++ {
 			for j := 0; j < len(bestTeam2); j++ {
-				// Создаем копии текущих лучших команд
+				// Create copies of current best teams
 				newTeam1 := make(Team, len(bestTeam1))
 				newTeam2 := make(Team, len(bestTeam2))
 				copy(newTeam1, bestTeam1)
 				copy(newTeam2, bestTeam2)
 
-				// Меняем игроков местами
+				// Swap players
 				newTeam1[i], newTeam2[j] = newTeam2[j], newTeam1[i]
 
 				if !isConstraintSatisfied(newTeam1, newTeam2, constraints) {
 					continue
 				}
 
-				newDiff := math.Abs(newTeam1.Score() - newTeam2.Score())
+				// Calculate effective scores with economic advantage
+				newTeam1Score, newTeam2Score := getEffectiveTeamScore(newTeam1, newTeam2)
+				newDiff := math.Abs(newTeam1Score - newTeam2Score)
+
 				if newDiff < bestDiff {
 					bestDiff = newDiff
-					// Обновляем лучшие команды
 					copy(bestTeam1, newTeam1)
 					copy(bestTeam2, newTeam2)
 					improved = true
@@ -449,6 +469,24 @@ func optimizeTeams(team1, team2 Team, constraints Constraints) (Team, Team) {
 	}
 
 	return bestTeam1, bestTeam2
+}
+
+func getEffectiveTeamScore(team1, team2 Team) (float64, float64) {
+	team1Score := team1.Score()
+	team2Score := team2.Score()
+
+	// Add economic advantage (10% per player difference)
+	if len(team1) < len(team2) {
+		// Team1 has fewer players, add 10% per missing player
+		economicBonus := team1Score * 0.10 * float64(len(team2)-len(team1))
+		team1Score += economicBonus
+	} else if len(team2) < len(team1) {
+		// Team2 has fewer players, add 10% per missing player
+		economicBonus := team2Score * 0.10 * float64(len(team1)-len(team2))
+		team2Score += economicBonus
+	}
+
+	return team1Score, team2Score
 }
 
 // playerInTeam проверяет наличие игрока в команде.
