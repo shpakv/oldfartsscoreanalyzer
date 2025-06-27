@@ -90,6 +90,25 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	diffText := fmt.Sprintf("Diff: %s (%s%%)", table.ScoreDifference, percentDiff)
 	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, diffText))
 
+	sb.WriteString("|-")
+	for _, width := range colWidths {
+		sb.WriteString(strings.Repeat("-", width+2))
+	}
+	sb.WriteString("|\n")
+	t1Side := "Team 1 начинает за CT"
+	t2Side := "Team 2 начинает за T"
+	if table.TeamScore[0] > table.TeamScore[1] {
+		t1Side = "Team 1 начинает за T"
+		t2Side = "Team 2 начинает за CT"
+	}
+	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, t1Side))
+	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, t2Side))
+	sb.WriteString("|-")
+	for _, width := range colWidths {
+		sb.WriteString(strings.Repeat("-", width+2))
+	}
+	sb.WriteString("|\n")
+
 	// Close telegram formatting
 	sb.WriteString("```\n")
 
