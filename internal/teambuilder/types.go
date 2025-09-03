@@ -53,9 +53,26 @@ type Constraint struct {
 
 type Constraints []Constraint
 
+// EconomicConfig настройки экономических преимуществ для неравных команд
+type EconomicConfig struct {
+	// Enabled включает/выключает экономические преимущества
+	Enabled bool `json:"enabled"`
+
+	// BasePercentage базовый процент для расчета экономического преимущества
+	// Формула: BasePercentage / smallerTeamSize = процент за недостающего игрока
+	BasePercentage float64 `json:"basePercentage"`
+
+	// MaxPercentage максимальный процент преимущества на игрока (защита от переизбытка)
+	MaxPercentage float64 `json:"maxPercentage"`
+
+	// MinPercentage минимальный процент преимущества на игрока
+	MinPercentage float64 `json:"minPercentage"`
+}
+
 type TeamConfiguration struct {
-	Players     Team        `json:"players"`
-	Constraints Constraints `json:"constraints"`
+	Players        Team           `json:"players"`
+	Constraints    Constraints    `json:"constraints"`
+	EconomicConfig EconomicConfig `json:"economicConfig"`
 }
 
 func (t Team) Score() float64 {

@@ -25,8 +25,10 @@ Package teambuilder — ваш личный инструктор по созда
 package teambuilder
 
 import (
+	"log"
 	"math"
 	"sort"
+	"time"
 )
 
 // TeamBuilder — это тот самый алгоритмический гений, который берёт ваш список игроков
@@ -53,10 +55,21 @@ type TeamBuilder struct{}
 func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	players := config.Players
 	constraints := config.Constraints
+	economicConfig := config.EconomicConfig
 
 	// Проверка на пустой список игроков
 	if len(players) == 0 {
 		return Team{}, Team{}
+	}
+
+	// Если экономические настройки не заданы, используем дефолтные для равных команд
+	if !economicConfig.Enabled && economicConfig.BasePercentage == 0 {
+		economicConfig = EconomicConfig{
+			Enabled:        false, // Отключено для равных команд по умолчанию
+			BasePercentage: 15.0,
+			MaxPercentage:  5.0,
+			MinPercentage:  1.0,
+		}
 	}
 
 	// Сначала обработаем ограничения типа ConstraintTogether
@@ -68,76 +81,227 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 		}
 	}
 
+	// Логирование начала процесса
+	startTime := time.Now()
+	log.Printf("🚀 TeamBuilder: Начинаем распределение %d игроков с %d ограничениями",
+		len(players), len(constraints))
+
+	if len(linkedPlayers) > 0 {
+		log.Printf("🔗 Найдены связанные игроки: %d пар", len(linkedPlayers)/2)
+	}
+
+	if economicConfig.Enabled {
+		log.Printf("💰 Экономические преимущества включены: Base=%.1f%%, Max=%.1f%%, Min=%.1f%%",
+			economicConfig.BasePercentage, economicConfig.MaxPercentage, economicConfig.MinPercentage)
+	}
+
 	// Сортируем игроков по убыванию веса
 	sort.Slice(players, func(i, j int) bool {
 		return players[i].Score > players[j].Score
 	})
 
-	// Пробуем все методы распределения и выбираем лучший результат
+	// Параллельно выполняем все методы распределения и выбираем лучший результат
+	type algorithmResult struct {
+		team1        Team
+		team2        Team
+		diff         float64
+		valid        bool
+		methodName   string
+		duration     time.Duration
+		team1Score   float64
+		team2Score   float64
+		economicDiff float64
+	}
+
+	// Канал для получения результатов от горутин
+	results := make(chan algorithmResult, 4)
+
+	// Запускаем все алгоритмы параллельно с детальным логированием
+	go func() {
+		start := time.Now()
+		team1, team2 := distributeWithLinkedPlayers(players, linkedPlayers)
+		duration := time.Since(start)
+		valid := isConstraintSatisfied(team1, team2, constraints)
+		diff := calculateTeamBalanceDifference(team1, team2, economicConfig)
+		team1Score := team1.Score()
+		team2Score := team2.Score()
+
+		// Для неравных команд показываем экономическую разницу
+		economicDiff := diff
+		if len(team1) != len(team2) && economicConfig.Enabled {
+			economicDiff = math.Abs(team1Score - team2Score)
+		}
+
+		results <- algorithmResult{
+			team1, team2, diff, valid, "LinkedPlayers", duration,
+			team1Score, team2Score, economicDiff,
+		}
+	}()
+
+	go func() {
+		start := time.Now()
+		team1, team2 := distributeSnake(players)
+		duration := time.Since(start)
+		valid := isConstraintSatisfied(team1, team2, constraints)
+		diff := calculateTeamBalanceDifference(team1, team2, economicConfig)
+		team1Score := team1.Score()
+		team2Score := team2.Score()
+
+		economicDiff := diff
+		if len(team1) != len(team2) && economicConfig.Enabled {
+			economicDiff = math.Abs(team1Score - team2Score)
+		}
+
+		results <- algorithmResult{
+			team1, team2, diff, valid, "Snake", duration,
+			team1Score, team2Score, economicDiff,
+		}
+	}()
+
+	go func() {
+		start := time.Now()
+		team1, team2 := distributePairs(players)
+		duration := time.Since(start)
+		valid := isConstraintSatisfied(team1, team2, constraints)
+		diff := calculateTeamBalanceDifference(team1, team2, economicConfig)
+		team1Score := team1.Score()
+		team2Score := team2.Score()
+
+		economicDiff := diff
+		if len(team1) != len(team2) && economicConfig.Enabled {
+			economicDiff = math.Abs(team1Score - team2Score)
+		}
+
+		results <- algorithmResult{
+			team1, team2, diff, valid, "Pairs", duration,
+			team1Score, team2Score, economicDiff,
+		}
+	}()
+
+	go func() {
+		start := time.Now()
+		team1, team2 := distributeGreedyWithConfig(players, economicConfig)
+		duration := time.Since(start)
+		valid := isConstraintSatisfied(team1, team2, constraints)
+		diff := calculateTeamBalanceDifference(team1, team2, economicConfig)
+		team1Score := team1.Score()
+		team2Score := team2.Score()
+
+		economicDiff := diff
+		if len(team1) != len(team2) && economicConfig.Enabled {
+			economicDiff = math.Abs(team1Score - team2Score)
+		}
+
+		results <- algorithmResult{
+			team1, team2, diff, valid, "GreedyEcon", duration,
+			team1Score, team2Score, economicDiff,
+		}
+	}()
+
+	// Собираем результаты от всех горутин с подробным логированием
 	var bestTeam1, bestTeam2 Team
 	bestDiff := math.Inf(1)
+	var bestMethod string
+	var algorithmResults []algorithmResult
 
-	// Метод 1: Начальное распределение с учетом связанных игроков
-	team1, team2 := distributeWithLinkedPlayers(players, linkedPlayers)
-	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(team1.Score() - team2.Score())
-		if diff < bestDiff {
-			bestDiff = diff
-			bestTeam1 = make(Team, len(team1))
-			bestTeam2 = make(Team, len(team2))
-			copy(bestTeam1, team1)
-			copy(bestTeam2, team2)
+	log.Printf("⚡ Алгоритмы запущены параллельно, ждем результаты...")
+
+	for i := 0; i < 4; i++ {
+		result := <-results
+		algorithmResults = append(algorithmResults, result)
+
+		// Логирование результата каждого алгоритма
+		status := "❌ INVALID"
+		if result.valid {
+			status = "✅ VALID"
+		}
+
+		// Показываем экономическое влияние для неравных команд
+		if len(result.team1) != len(result.team2) && economicConfig.Enabled {
+			log.Printf("📊 %s: %s | Время: %v | Баланс: %.1f vs %.1f | До эконом.: %.1f | После: %.1f",
+				result.methodName, status, result.duration,
+				result.team1Score, result.team2Score, result.economicDiff, result.diff)
+		} else {
+			log.Printf("📊 %s: %s | Время: %v | Баланс: %.1f vs %.1f (разница: %.1f)",
+				result.methodName, status, result.duration,
+				result.team1Score, result.team2Score, result.diff)
+		}
+
+		if result.valid && result.diff < bestDiff {
+			bestDiff = result.diff
+			bestMethod = result.methodName
+			bestTeam1 = make(Team, len(result.team1))
+			bestTeam2 = make(Team, len(result.team2))
+			copy(bestTeam1, result.team1)
+			copy(bestTeam2, result.team2)
 		}
 	}
 
-	// Метод 2: Распределение змейкой
-	team1, team2 = distributeSnake(players)
-	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(team1.Score() - team2.Score())
-		if diff < bestDiff {
-			bestDiff = diff
-			bestTeam1 = make(Team, len(team1))
-			bestTeam2 = make(Team, len(team2))
-			copy(bestTeam1, team1)
-			copy(bestTeam2, team2)
+	// Сводная статистика по алгоритмам
+	validAlgorithms := 0
+	totalDuration := time.Duration(0)
+	for _, result := range algorithmResults {
+		if result.valid {
+			validAlgorithms++
 		}
+		totalDuration += result.duration
 	}
 
-	// Метод 3: Распределение парами
-	team1, team2 = distributePairs(players)
-	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(team1.Score() - team2.Score())
-		if diff < bestDiff {
-			bestDiff = diff
-			bestTeam1 = make(Team, len(team1))
-			bestTeam2 = make(Team, len(team2))
-			copy(bestTeam1, team1)
-			copy(bestTeam2, team2)
-		}
-	}
-
-	// Метод 4: Жадное распределение
-	team1, team2 = distributeGreedy(players)
-	if isConstraintSatisfied(team1, team2, constraints) {
-		diff := math.Abs(team1.Score() - team2.Score())
-		if diff < bestDiff {
-			bestDiff = diff
-			bestTeam1 = make(Team, len(team1))
-			bestTeam2 = make(Team, len(team2))
-			copy(bestTeam1, team1)
-			copy(bestTeam2, team2)
-		}
-	}
+	log.Printf("📈 Сводка: %d/%d алгоритмов дали валидные результаты за %v",
+		validAlgorithms, len(algorithmResults), totalDuration)
 
 	// Если нашли хотя бы одно валидное решение, оптимизируем его
 	if bestDiff != math.Inf(1) {
-		return optimizeTeams(bestTeam1, bestTeam2, constraints)
+		log.Printf("🎯 Лучший алгоритм: %s с разницей %.1f", bestMethod, bestDiff)
+		log.Printf("⚙️  Запускаем оптимизацию...")
+
+		optimizationStart := time.Now()
+		optimizedTeam1, optimizedTeam2 := optimizeTeamsWithConfig(bestTeam1, bestTeam2, constraints, economicConfig)
+		optimizationTime := time.Since(optimizationStart)
+
+		finalDiff := calculateTeamBalanceDifference(optimizedTeam1, optimizedTeam2, economicConfig)
+		improvement := bestDiff - finalDiff
+
+		if improvement > 0.1 {
+			log.Printf("✨ Оптимизация улучшила баланс на %.1f за %v (%.1f -> %.1f)",
+				improvement, optimizationTime, bestDiff, finalDiff)
+		} else {
+			log.Printf("🔧 Оптимизация завершена за %v (баланс: %.1f)",
+				optimizationTime, finalDiff)
+		}
+
+		totalTime := time.Since(startTime)
+		log.Printf("🏁 Команды сформированы за %v! Итоговый баланс: %.1f",
+			totalTime, finalDiff)
+
+		return optimizedTeam1, optimizedTeam2
 	}
 
-	// Если не нашли валидного решения, возвращаем результат жадного алгоритма
-	// и пытаемся его оптимизировать
-	team1, team2 = distributeGreedy(players)
-	return optimizeTeams(team1, team2, constraints)
+	// Если не нашли валидного решения, используем fallback
+	log.Printf("⚠️  Ни один алгоритм не удовлетворил ограничения, используем fallback")
+	fallbackStart := time.Now()
+	fallbackTeam1, fallbackTeam2 := distributeGreedyWithConfig(players, economicConfig)
+	fallbackTime := time.Since(fallbackStart)
+
+	optimizedTeam1, optimizedTeam2 := optimizeTeamsWithConfig(fallbackTeam1, fallbackTeam2, constraints, economicConfig)
+	totalTime := time.Since(startTime)
+	finalDiff := calculateTeamBalanceDifference(optimizedTeam1, optimizedTeam2, economicConfig)
+
+	log.Printf("🔄 Fallback выполнен за %v, итого %v | Финальный баланс: %.1f",
+		fallbackTime, totalTime, finalDiff)
+
+	return optimizedTeam1, optimizedTeam2
+}
+
+// calculateTeamBalanceDifference вычисляет разницу в балансе команд
+func calculateTeamBalanceDifference(team1, team2 Team, config EconomicConfig) float64 {
+	if len(team1) == len(team2) {
+		// Для равных команд используем обычный баланс
+		return math.Abs(team1.Score() - team2.Score())
+	}
+	// Для неравных команд используем эффективный баланс с экономикой
+	score1, score2 := GetEffectiveTeamScoreWithConfig(team1, team2, config)
+	return math.Abs(score1 - score2)
 }
 
 // getTeamScore вычисляет суммарный рейтинг команды.
@@ -471,22 +635,147 @@ func optimizeTeams(team1, team2 Team, constraints Constraints) (Team, Team) {
 	return bestTeam1, bestTeam2
 }
 
-func getEffectiveTeamScore(team1, team2 Team) (float64, float64) {
+// GetEffectiveTeamScoreWithConfig рассчитывает эффективные счета команд с учетом экономических преимуществ
+func GetEffectiveTeamScoreWithConfig(team1, team2 Team, config EconomicConfig) (float64, float64) {
 	team1Score := team1.Score()
 	team2Score := team2.Score()
 
-	// Add economic advantage (10% per player difference)
+	// Если экономические преимущества отключены, возвращаем базовые счета
+	if !config.Enabled {
+		return team1Score, team2Score
+	}
+
+	// Рассчитываем адаптивное экономическое преимущество
 	if len(team1) < len(team2) {
-		// Team1 has fewer players, add 10% per missing player
-		economicBonus := team1Score * 0.10 * float64(len(team2)-len(team1))
+		// Team1 имеет меньше игроков, добавляем экономический бонус
+		percentPerPlayer := calculateAdaptivePercentage(len(team1), config)
+		economicBonus := team1Score * percentPerPlayer * float64(len(team2)-len(team1))
 		team1Score += economicBonus
 	} else if len(team2) < len(team1) {
-		// Team2 has fewer players, add 10% per missing player
-		economicBonus := team2Score * 0.10 * float64(len(team1)-len(team2))
+		// Team2 имеет меньше игроков, добавляем экономический бонус
+		percentPerPlayer := calculateAdaptivePercentage(len(team2), config)
+		economicBonus := team2Score * percentPerPlayer * float64(len(team1)-len(team2))
 		team2Score += economicBonus
 	}
 
 	return team1Score, team2Score
+}
+
+// calculateAdaptivePercentage вычисляет адаптивный процент экономического преимущества
+// Формула: BasePercentage / smallerTeamSize с ограничениями min/max
+func calculateAdaptivePercentage(smallerTeamSize int, config EconomicConfig) float64 {
+	if smallerTeamSize == 0 {
+		return 0.0
+	}
+
+	// Основная формула: чем больше команда, тем меньше влияние экономики
+	percentage := config.BasePercentage / float64(smallerTeamSize)
+
+	// Применяем ограничения
+	if percentage > config.MaxPercentage {
+		percentage = config.MaxPercentage
+	}
+	if percentage < config.MinPercentage {
+		percentage = config.MinPercentage
+	}
+
+	// Возвращаем как долю (например, 0.05 для 5%)
+	return percentage / 100.0
+}
+
+// getEffectiveTeamScore обертка для обратной совместимости с дефолтными настройками
+func getEffectiveTeamScore(team1, team2 Team) (float64, float64) {
+	defaultConfig := EconomicConfig{
+		Enabled:        true,
+		BasePercentage: 15.0, // 15% базовый процент
+		MaxPercentage:  5.0,  // максимум 5% за игрока
+		MinPercentage:  1.0,  // минимум 1% за игрока
+	}
+	return GetEffectiveTeamScoreWithConfig(team1, team2, defaultConfig)
+}
+
+// distributeGreedyWithConfig реализует жадный алгоритм с учетом экономической конфигурации
+func distributeGreedyWithConfig(players []TeamPlayer, config EconomicConfig) (Team, Team) {
+	teamSize := len(players) / 2
+	if len(players)%2 != 0 {
+		teamSize++
+	}
+	team1 := make(Team, 0, teamSize)
+	team2 := make(Team, 0, teamSize)
+
+	for _, player := range players {
+		// Calculate projected team scores including economic advantage
+		projTeam1 := append(Team{}, team1...)
+		projTeam1 = append(projTeam1, player)
+
+		projTeam2 := append(Team{}, team2...)
+		projTeam2 = append(projTeam2, player)
+
+		// Calculate effective scores for both scenarios using config
+		score1Team1, score1Team2 := GetEffectiveTeamScoreWithConfig(projTeam1, team2, config)
+		score2Team1, score2Team2 := GetEffectiveTeamScoreWithConfig(team1, projTeam2, config)
+
+		// Choose the option that minimizes score difference
+		diff1 := math.Abs(score1Team1 - score1Team2)
+		diff2 := math.Abs(score2Team1 - score2Team2)
+
+		if (diff1 <= diff2 && len(team1) < teamSize) || len(team2) >= teamSize {
+			team1 = append(team1, player)
+		} else {
+			team2 = append(team2, player)
+		}
+	}
+	return team1, team2
+}
+
+// optimizeTeamsWithConfig выполняет оптимизацию с учетом экономической конфигурации
+func optimizeTeamsWithConfig(team1, team2 Team, constraints Constraints, config EconomicConfig) (Team, Team) {
+	bestTeam1 := make(Team, len(team1))
+	bestTeam2 := make(Team, len(team2))
+	copy(bestTeam1, team1)
+	copy(bestTeam2, team2)
+
+	// Calculate effective scores considering economic advantage
+	team1Score, team2Score := GetEffectiveTeamScoreWithConfig(bestTeam1, bestTeam2, config)
+	bestDiff := math.Abs(team1Score - team2Score)
+
+	for attempt := 0; attempt < 3; attempt++ {
+		improved := false
+
+		for i := 0; i < len(bestTeam1); i++ {
+			for j := 0; j < len(bestTeam2); j++ {
+				// Create copies of current best teams
+				newTeam1 := make(Team, len(bestTeam1))
+				newTeam2 := make(Team, len(bestTeam2))
+				copy(newTeam1, bestTeam1)
+				copy(newTeam2, bestTeam2)
+
+				// Swap players
+				newTeam1[i], newTeam2[j] = newTeam2[j], newTeam1[i]
+
+				if !isConstraintSatisfied(newTeam1, newTeam2, constraints) {
+					continue
+				}
+
+				// Calculate effective scores with economic advantage
+				newTeam1Score, newTeam2Score := GetEffectiveTeamScoreWithConfig(newTeam1, newTeam2, config)
+				newDiff := math.Abs(newTeam1Score - newTeam2Score)
+
+				if newDiff < bestDiff {
+					bestDiff = newDiff
+					copy(bestTeam1, newTeam1)
+					copy(bestTeam2, newTeam2)
+					improved = true
+				}
+			}
+		}
+
+		if !improved {
+			break
+		}
+	}
+
+	return bestTeam1, bestTeam2
 }
 
 // playerInTeam проверяет наличие игрока в команде.
