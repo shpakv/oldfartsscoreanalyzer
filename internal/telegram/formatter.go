@@ -27,8 +27,8 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	for _, row := range table.Rows {
 		for j, cell := range row {
 			var displayCell string
-			// Account for skull width when calculating column widths
-			if cell == table.SorryBro && cell != "" {
+			// Account for skull width when calculating column widths (only for 2 teams)
+			if len(table.Headers) == 2 && cell == table.SorryBro && cell != "" {
 				withSkull := skull + " " + cell
 				skullWidth := runewidth.StringWidth(skull)
 				if runewidth.StringWidth(withSkull) > maxStringLength {
@@ -72,9 +72,12 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	sb.WriteString("\n")
 
 	// Separator
-	sb.WriteString("|-")
-	for _, width := range colWidths {
+	sb.WriteString("|")
+	for i, width := range colWidths {
 		sb.WriteString(strings.Repeat("-", width+2))
+		if i < len(colWidths)-1 {
+			sb.WriteString("|")
+		}
 	}
 	sb.WriteString("|\n")
 
@@ -82,9 +85,9 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	for _, row := range table.Rows {
 		sb.WriteString("| ")
 		for j, cell := range row {
-			// Add skull emoji if this is the SorryBro player
+			// Add skull emoji if this is the SorryBro player (only for 2 teams)
 			displayCell := cell
-			if cell == table.SorryBro && cell != "" {
+			if len(table.Headers) == 2 && cell == table.SorryBro && cell != "" {
 				// Check if we need to truncate
 				withSkull := skull + " " + cell
 				skullWidth := runewidth.StringWidth(skull)
@@ -105,50 +108,84 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	}
 
 	// Totals
-	sb.WriteString("|-")
-	for _, width := range colWidths {
+	sb.WriteString("|")
+	for i, width := range colWidths {
 		sb.WriteString(strings.Repeat("-", width+2))
+		if i < len(colWidths)-1 {
+			sb.WriteString("|")
+		}
 	}
 	sb.WriteString("|\n")
-	left := "TS: " + table.TeamScore[0]
-	right := "TS: " + table.TeamScore[1]
-	sb.WriteString(fmt.Sprintf("| %s | %s |\n", padRight(left, colWidths[0]), padRight(right, colWidths[1])))
 
-	// Percentage diff
-	percentDiff := calculatePercentageDifference(table.TeamScore[0], table.TeamScore[1])
-	diffText := fmt.Sprintf("Diff: %s (%s%%)", table.ScoreDifference, percentDiff)
-	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(diffText, totalWidth-3)))
+	// Format team scores row
+	sb.WriteString("| ")
+	for i := 0; i < len(table.TeamScore); i++ {
+		tsString := "TS: " + table.TeamScore[i]
+		sb.WriteString(padRight(tsString, colWidths[i]))
+		sb.WriteString(" | ")
+	}
+	sb.WriteString("\n")
 
-	// Side suggestion
-	sb.WriteString("|-")
-	for _, width := range colWidths {
-		sb.WriteString(strings.Repeat("-", width+2))
-	}
-	sb.WriteString("|\n")
-	t1Side := "Team 1 начинает за CT"
-	t2Side := "Team 2 начинает за T"
-	if table.TeamScore[0] > table.TeamScore[1] {
-		t1Side = "Team 1 начинает за T"
-		t2Side = "Team 2 начинает за CT"
-	}
-	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(t1Side, totalWidth-3)))
-	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(t2Side, totalWidth-3)))
+	// Additional info (only for 2 teams)
+	if len(table.TeamScore) == 2 {
+		// Percentage diff
+		percentDiff := calculatePercentageDifferenceMultiple(table.TeamScore)
+		diffText := fmt.Sprintf("Diff: %s (%s%%)", table.ScoreDifference, percentDiff)
+		sb.WriteString(fmt.Sprintf("| %s |\n", padRight(diffText, totalWidth-3)))
 
-	sb.WriteString("|-")
-	for _, width := range colWidths {
-		sb.WriteString(strings.Repeat("-", width+2))
+		// Side suggestion
+		sb.WriteString("|")
+		for i, width := range colWidths {
+			sb.WriteString(strings.Repeat("-", width+2))
+			if i < len(colWidths)-1 {
+				sb.WriteString("|")
+			}
+		}
+		sb.WriteString("|\n")
+		t1Side := "Team 1 начинает за CT"
+		t2Side := "Team 2 начинает за T"
+		if table.TeamScore[0] > table.TeamScore[1] {
+			t1Side = "Team 1 начинает за T"
+			t2Side = "Team 2 начинает за CT"
+		}
+		sb.WriteString(fmt.Sprintf("| %s |\n", padRight(t1Side, totalWidth-3)))
+		sb.WriteString(fmt.Sprintf("| %s |\n", padRight(t2Side, totalWidth-3)))
 	}
-	sb.WriteString("|\n")
-	skullText := `(✱) - цель 'Сорян, Братан'`
-	giftText := `Приз - Phoenix Case $8`
-	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(skullText, totalWidth-3)))
-	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(giftText, totalWidth-3)))
 
-	sb.WriteString("|-")
-	for _, width := range colWidths {
-		sb.WriteString(strings.Repeat("-", width+2))
+	// Footer notes (only for 2 teams)
+	if len(table.TeamScore) == 2 {
+		sb.WriteString("|")
+		for i, width := range colWidths {
+			sb.WriteString(strings.Repeat("-", width+2))
+			if i < len(colWidths)-1 {
+				sb.WriteString("|")
+			}
+		}
+		sb.WriteString("|\n")
+		skullText := `(✱) - цель 'Сорян, Братан'`
+		giftText := `Приз - Phoenix Case $8`
+		sb.WriteString(fmt.Sprintf("| %s |\n", padRight(skullText, totalWidth-3)))
+		sb.WriteString(fmt.Sprintf("| %s |\n", padRight(giftText, totalWidth-3)))
+
+		sb.WriteString("|")
+		for i, width := range colWidths {
+			sb.WriteString(strings.Repeat("-", width+2))
+			if i < len(colWidths)-1 {
+				sb.WriteString("|")
+			}
+		}
+		sb.WriteString("|\n")
+	} else {
+		// For 4+ teams, just add final separator
+		sb.WriteString("|")
+		for i, width := range colWidths {
+			sb.WriteString(strings.Repeat("-", width+2))
+			if i < len(colWidths)-1 {
+				sb.WriteString("|")
+			}
+		}
+		sb.WriteString("|\n")
 	}
-	sb.WriteString("|\n")
 
 	sb.WriteString("```\n")
 	return sb.String()
@@ -163,6 +200,41 @@ func calculatePercentageDifference(score1, score2 string) string {
 	}
 	avg := (s1 + s2) / 2
 	diff := math.Abs(s1 - s2)
+	return fmt.Sprintf("%.1f", (diff/avg)*100)
+}
+
+func calculatePercentageDifferenceMultiple(scores []string) string {
+	if len(scores) == 0 {
+		return "0.0"
+	}
+
+	// Parse all scores
+	floatScores := make([]float64, len(scores))
+	sum := 0.0
+	for i, scoreStr := range scores {
+		fmt.Sscanf(scoreStr, "%f", &floatScores[i])
+		sum += floatScores[i]
+	}
+
+	if sum == 0 {
+		return "0.0"
+	}
+
+	// Find min and max
+	minScore := floatScores[0]
+	maxScore := floatScores[0]
+	for _, score := range floatScores {
+		if score < minScore {
+			minScore = score
+		}
+		if score > maxScore {
+			maxScore = score
+		}
+	}
+
+	// Calculate average and percentage difference
+	avg := sum / float64(len(scores))
+	diff := math.Abs(maxScore - minScore)
 	return fmt.Sprintf("%.1f", (diff/avg)*100)
 }
 

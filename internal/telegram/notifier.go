@@ -23,3 +23,10 @@ func (n *Notifier) Notify(team1, team2 teambuilder.Team, sorryBro string) error 
 
 	return n.handler.SendMessage(message)
 }
+
+func (n *Notifier) NotifyMultiple(teams []teambuilder.Team, sorryBro string) error {
+	teamTable := teamtable.NewTeamTableMultiple(teams, sorryBro)
+	message := n.formatter.Format(teamTable)
+
+	return n.handler.SendMessage(message)
+}

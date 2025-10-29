@@ -12,22 +12,41 @@ import (
 	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
-var SorryBro = "Mr. Titspervert"
+var SorryBro = ""
 
 func main() {
 	c := config()
 	f := telegram.NewTeamTableFormatter()
 	notifiers := []notifier.Notifier{
 		notifier.NewConsoleNotifier(f),
-		telegram.NewNotifier(apiHandler(), f),
+		//telegram.NewNotifier(apiHandler(), f),
 	}
 	repo := teambuilder.NewPlayerRepository()
 	teamBuilder := teambuilder.NewTeamBuilder(repo)
-	team1, team2 := teamBuilder.Build(c)
-	for _, n := range notifiers {
-		err := n.Notify(team1, team2, SorryBro)
-		if err != nil {
-			log.Fatalf("Failed to notify old farts: %v", err)
+
+	// Проверяем количество команд
+	numTeams := c.NumTeams
+	if numTeams != 2 && numTeams != 4 {
+		numTeams = 2 // Default to 2 teams
+	}
+
+	if numTeams == 4 {
+		// Используем новый метод для 4 команд
+		teams := teamBuilder.BuildMultiple(c)
+		for _, n := range notifiers {
+			err := n.NotifyMultiple(teams, SorryBro)
+			if err != nil {
+				log.Fatalf("Failed to notify old farts: %v", err)
+			}
+		}
+	} else {
+		// Используем старый метод для 2 команд
+		team1, team2 := teamBuilder.Build(c)
+		for _, n := range notifiers {
+			err := n.Notify(team1, team2, SorryBro)
+			if err != nil {
+				log.Fatalf("Failed to notify old farts: %v", err)
+			}
 		}
 	}
 }

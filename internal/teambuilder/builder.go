@@ -494,3 +494,290 @@ func (b *TeamBuilder) getPlayersScore(players Team) Team {
 	}
 	return players
 }
+
+// BuildMultiple создает переменное количество команд (2 или 4) в зависимости от конфигурации
+func (b *TeamBuilder) BuildMultiple(config *TeamConfiguration) []Team {
+	numTeams := config.NumTeams
+	if numTeams != 2 && numTeams != 4 {
+		numTeams = 2 // Default to 2 teams
+	}
+
+	if numTeams == 2 {
+		team1, team2 := b.Build(config)
+		return []Team{team1, team2}
+	}
+
+	return b.buildFourTeams(config)
+}
+
+// buildFourTeams создает четыре сбалансированные команды
+func (b *TeamBuilder) buildFourTeams(config *TeamConfiguration) []Team {
+	players := b.getPlayersScore(config.Players)
+	constraints := config.Constraints
+
+	// Проверка на пустой список игроков
+	if len(players) == 0 {
+		return []Team{{}, {}, {}, {}}
+	}
+
+	// Проверка минимального количества игроков для 4 команд
+	if len(players) < 4 {
+		// Если игроков меньше 4, создаем столько команд, сколько игроков
+		teams := make([]Team, 4)
+		for i := 0; i < len(players) && i < 4; i++ {
+			teams[i] = Team{players[i]}
+		}
+		return teams
+	}
+
+	// Сортируем игроков по убыванию веса
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].Score > players[j].Score
+	})
+
+	// Создаем карту связанных игроков
+	linkedPlayers := make(map[string]string)
+	for _, constraint := range constraints {
+		if constraint.Type == ConstraintTogether {
+			linkedPlayers[constraint.Player1] = constraint.Player2
+			linkedPlayers[constraint.Player2] = constraint.Player1
+		}
+	}
+
+	var bestTeams []Team
+	bestDiff := math.Inf(1)
+
+	// Метод 1: Распределение змейкой для 4 команд
+	teams := distributeFourTeamsSnake(players)
+	if isConstraintSatisfiedMultiple(teams, constraints) {
+		diff := calculateTeamsDifference(teams)
+		if diff < bestDiff {
+			bestDiff = diff
+			bestTeams = copyTeams(teams)
+		}
+	}
+
+	// Метод 2: Жадное распределение для 4 команд
+	teams = distributeFourTeamsGreedy(players)
+	if isConstraintSatisfiedMultiple(teams, constraints) {
+		diff := calculateTeamsDifference(teams)
+		if diff < bestDiff {
+			bestDiff = diff
+			bestTeams = copyTeams(teams)
+		}
+	}
+
+	// Метод 3: Распределение с учетом связанных игроков
+	teams = distributeFourTeamsWithLinked(players, linkedPlayers)
+	if isConstraintSatisfiedMultiple(teams, constraints) {
+		diff := calculateTeamsDifference(teams)
+		if diff < bestDiff {
+			bestDiff = diff
+			bestTeams = copyTeams(teams)
+		}
+	}
+
+	// Если нашли валидное решение, возвращаем его
+	if bestDiff != math.Inf(1) {
+		return bestTeams
+	}
+
+	// Если не нашли, возвращаем жадное распределение
+	return distributeFourTeamsGreedy(players)
+}
+
+// distributeFourTeamsSnake распределяет игроков методом змейки для 4 команд
+func distributeFourTeamsSnake(players []TeamPlayer) []Team {
+	teamSize := len(players) / 4
+	if len(players)%4 != 0 {
+		teamSize++
+	}
+
+	teams := make([]Team, 4)
+	for i := 0; i < 4; i++ {
+		teams[i] = make(Team, 0, teamSize)
+	}
+
+	teamIndex := 0
+	direction := 1 // 1 for forward, -1 for backward
+
+	for _, player := range players {
+		teams[teamIndex] = append(teams[teamIndex], player)
+
+		// Move to next team
+		teamIndex += direction
+		if teamIndex >= 4 {
+			teamIndex = 3
+			direction = -1
+		} else if teamIndex < 0 {
+			teamIndex = 0
+			direction = 1
+		}
+	}
+
+	return teams
+}
+
+// distributeFourTeamsGreedy жадно распределяет игроков по 4 командам
+func distributeFourTeamsGreedy(players []TeamPlayer) []Team {
+	teamSize := len(players) / 4
+	if len(players)%4 != 0 {
+		teamSize++
+	}
+
+	teams := make([]Team, 4)
+	for i := 0; i < 4; i++ {
+		teams[i] = make(Team, 0, teamSize)
+	}
+
+	for _, player := range players {
+		// Находим команду с минимальным счетом
+		minScore := teams[0].Score()
+		minIndex := 0
+		for i := 1; i < 4; i++ {
+			if teams[i].Score() < minScore {
+				minScore = teams[i].Score()
+				minIndex = i
+			}
+		}
+		teams[minIndex] = append(teams[minIndex], player)
+	}
+
+	return teams
+}
+
+// distributeFourTeamsWithLinked распределяет с учетом связанных игроков
+func distributeFourTeamsWithLinked(players Team, linkedPlayers map[string]string) []Team {
+	teamSize := len(players) / 4
+	if len(players)%4 != 0 {
+		teamSize++
+	}
+
+	teams := make([]Team, 4)
+	for i := 0; i < 4; i++ {
+		teams[i] = make(Team, 0, teamSize)
+	}
+
+	used := make(map[string]bool)
+	playerMap := make(map[string]TeamPlayer)
+	for _, p := range players {
+		playerMap[p.NickName] = p
+	}
+
+	// Находим группы связанных игроков
+	groups := findConnectedGroups(players, linkedPlayers)
+
+	// Распределяем группы
+	for _, group := range groups {
+		groupPlayers := make([]TeamPlayer, 0, len(group))
+		for _, name := range group {
+			if player, ok := playerMap[name]; ok {
+				groupPlayers = append(groupPlayers, player)
+				used[name] = true
+			}
+		}
+
+		if len(groupPlayers) == 0 {
+			continue
+		}
+
+		// Находим команду с минимальным счетом
+		minScore := teams[0].Score()
+		minIndex := 0
+		for i := 1; i < 4; i++ {
+			if teams[i].Score() < minScore {
+				minScore = teams[i].Score()
+				minIndex = i
+			}
+		}
+		teams[minIndex] = append(teams[minIndex], groupPlayers...)
+	}
+
+	// Распределяем оставшихся игроков
+	for _, player := range players {
+		if used[player.NickName] {
+			continue
+		}
+
+		// Находим команду с минимальным счетом
+		minScore := teams[0].Score()
+		minIndex := 0
+		for i := 1; i < 4; i++ {
+			if teams[i].Score() < minScore {
+				minScore = teams[i].Score()
+				minIndex = i
+			}
+		}
+		teams[minIndex] = append(teams[minIndex], player)
+		used[player.NickName] = true
+	}
+
+	return teams
+}
+
+// isConstraintSatisfiedMultiple проверяет ограничения для множества команд
+func isConstraintSatisfiedMultiple(teams []Team, constraints Constraints) bool {
+	for _, constraint := range constraints {
+		player1Team := -1
+		player2Team := -1
+
+		// Найдем в каких командах находятся игроки
+		for i, team := range teams {
+			if playerInTeam(team, constraint.Player1) {
+				player1Team = i
+			}
+			if playerInTeam(team, constraint.Player2) {
+				player2Team = i
+			}
+		}
+
+		// Если один из игроков не найден, пропускаем
+		if player1Team == -1 || player2Team == -1 {
+			continue
+		}
+
+		switch constraint.Type {
+		case ConstraintTogether:
+			if player1Team != player2Team {
+				return false
+			}
+		case ConstraintSeparate:
+			if player1Team == player2Team {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// calculateTeamsDifference вычисляет разницу между макс и мин командами
+func calculateTeamsDifference(teams []Team) float64 {
+	if len(teams) == 0 {
+		return 0
+	}
+
+	minScore := teams[0].Score()
+	maxScore := teams[0].Score()
+
+	for i := 1; i < len(teams); i++ {
+		score := teams[i].Score()
+		if score < minScore {
+			minScore = score
+		}
+		if score > maxScore {
+			maxScore = score
+		}
+	}
+
+	return maxScore - minScore
+}
+
+// copyTeams создает глубокую копию среза команд
+func copyTeams(teams []Team) []Team {
+	result := make([]Team, len(teams))
+	for i, team := range teams {
+		result[i] = make(Team, len(team))
+		copy(result[i], team)
+	}
+	return result
+}
