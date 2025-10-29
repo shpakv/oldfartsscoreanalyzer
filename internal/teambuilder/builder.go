@@ -25,13 +25,21 @@ Package teambuilder — ваш личный инструктор по созда
 package teambuilder
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"sort"
 )
 
 // TeamBuilder — это тот самый алгоритмический гений, который берёт ваш список игроков
 // и создаёт команды, настолько честные, насколько это возможно в CS2.
-type TeamBuilder struct{}
+type TeamBuilder struct {
+	repo PlayerRepository
+}
+
+func NewTeamBuilder(repo PlayerRepository) *TeamBuilder {
+	return &TeamBuilder{repo: repo}
+}
 
 // Build выполняет распределение игроков по командам с учетом заданных ограничений.
 // Использует комбинацию нескольких алгоритмов распределения для достижения оптимального результата.
@@ -51,7 +59,7 @@ type TeamBuilder struct{}
 //
 // Сложность: O(2^n), где n - количество игроков
 func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
-	players := config.Players
+	players := b.getPlayersScore(config.Players)
 	constraints := config.Constraints
 
 	// Проверка на пустой список игроков
@@ -466,4 +474,23 @@ func playerInTeam(team Team, playerName string) bool {
 		}
 	}
 	return false
+}
+
+func (b *TeamBuilder) getPlayersScore(players Team) Team {
+	var err error
+	for i, player := range players {
+		if player.Score == 0.0 {
+			rp := b.repo.FindByName(player.NickName)
+			if rp == nil {
+				err = errors.Join(err, fmt.Errorf("no such team player with nickname %s", player.NickName))
+				continue
+			}
+			player.Score = rp.Score
+			players[i] = player
+		}
+	}
+	if err != nil {
+		panic(err)
+	}
+	return players
 }

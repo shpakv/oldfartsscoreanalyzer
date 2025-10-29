@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"log"
 	"oldfartscounter/internal/environment"
@@ -9,7 +8,11 @@ import (
 	"oldfartscounter/internal/teambuilder"
 	"oldfartscounter/internal/telegram"
 	"os"
+
+	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
+
+var SorryBro = "Mr. Titspervert"
 
 func main() {
 	c := config()
@@ -18,10 +21,11 @@ func main() {
 		notifier.NewConsoleNotifier(f),
 		telegram.NewNotifier(apiHandler(), f),
 	}
-	teamBuilder := &teambuilder.TeamBuilder{}
+	repo := teambuilder.NewPlayerRepository()
+	teamBuilder := teambuilder.NewTeamBuilder(repo)
 	team1, team2 := teamBuilder.Build(c)
 	for _, n := range notifiers {
-		err := n.Notify(team1, team2)
+		err := n.Notify(team1, team2, SorryBro)
 		if err != nil {
 			log.Fatalf("Failed to notify old farts: %v", err)
 		}
@@ -29,7 +33,7 @@ func main() {
 }
 
 func config() *teambuilder.TeamConfiguration {
-	filePath := flag.String("c", "config.json5", "Path to the config.json file")
+	filePath := flag.String("c", "bin/config.json5", "Path to the config.json file")
 	flag.Parse()
 	if *filePath == "" {
 		log.Fatal("Please provide a file path using the -c flag")
@@ -43,14 +47,17 @@ func config() *teambuilder.TeamConfiguration {
 	}
 
 	var c teambuilder.TeamConfiguration
-	if err = json.Unmarshal(content, &c); err != nil {
+	if err = json5.Unmarshal(content, &c); err != nil {
 		log.Fatalf("Invalid JSON format: %v", err)
+	}
+	if c.SorryBro == nil {
+		c.SorryBro = &SorryBro
 	}
 	return &c
 }
 
 func apiHandler() *telegram.DefaultAPIHandler {
 	bot := telegram.NewBotFromEnv()
-	chatId := environment.GetVariable("TELEGRAM_CHAT_ID")
+	chatId := environment.GetVariable("TELEGRAM_CHAT_ID", telegram.ChatID)
 	return telegram.NewDefaultAPIHandler(bot, chatId)
 }

@@ -10,9 +10,10 @@ type TeamTable struct {
 	Rows            [][]string
 	TeamScore       []string
 	ScoreDifference string
+	SorryBro        string
 }
 
-func NewTeamTable(team1, team2 teambuilder.Team) *TeamTable {
+func NewTeamTable(team1, team2 teambuilder.Team, sorryBro string) *TeamTable {
 	scoreDifference := team1.Score() - team2.Score()
 	if scoreDifference < 0 {
 		scoreDifference = -scoreDifference
@@ -44,6 +45,6 @@ func NewTeamTable(team1, team2 teambuilder.Team) *TeamTable {
 		Rows:            rows,
 		TeamScore:       []string{fmt.Sprintf("%.2f", team1.Score()), fmt.Sprintf("%.2f", team2.Score())},
 		ScoreDifference: fmt.Sprintf("%.2f", scoreDifference),
+		SorryBro:        sorryBro,
 	}
-
 }

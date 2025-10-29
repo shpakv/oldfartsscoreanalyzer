@@ -5,91 +5,121 @@ import (
 	"math"
 	"oldfartscounter/internal/teamtable"
 	"strings"
+
+	"github.com/mattn/go-runewidth"
 )
 
-// Set a maximum length for strings (e.g., 15 characters)
+// Set a maximum length for strings (visible columns, not bytes)
 const maxStringLength = 15
 
-type TeamTableFormatter struct {
-}
+const skull = "(✱)" // маркер цели
 
-func NewTeamTableFormatter() *TeamTableFormatter {
-	return &TeamTableFormatter{}
-}
+type TeamTableFormatter struct{}
+
+func NewTeamTableFormatter() *TeamTableFormatter { return &TeamTableFormatter{} }
 
 func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
-	// Find the longest string in each column
+	// Find the longest visible width in each column
 	colWidths := make([]int, len(table.Headers))
 	for i, header := range table.Headers {
-		colWidths[i] = len(header)
+		colWidths[i] = runewidth.StringWidth(header)
 	}
 	for _, row := range table.Rows {
 		for j, cell := range row {
-			truncated := truncateWithEllipsis(cell, maxStringLength)
-			if len(truncated) > colWidths[j] {
-				colWidths[j] = len(truncated)
+			var displayCell string
+			// Account for skull width when calculating column widths
+			if cell == table.SorryBro && cell != "" {
+				withSkull := skull + " " + cell
+				skullWidth := runewidth.StringWidth(skull)
+				if runewidth.StringWidth(withSkull) > maxStringLength {
+					// Reserve space for skull + space (1 char) + "..." (3 chars)
+					truncatedName := runewidth.Truncate(cell, maxStringLength-skullWidth-4, "")
+					displayCell = skull + " " + truncatedName + "..."
+				} else {
+					displayCell = withSkull
+				}
+			} else {
+				displayCell = truncateVisible(cell, maxStringLength)
+			}
+			if w := runewidth.StringWidth(displayCell); w > colWidths[j] {
+				colWidths[j] = w
 			}
 		}
 	}
 	for i, score := range table.TeamScore {
 		tsString := "TS: " + score
-		if len(tsString) > colWidths[i] {
-			colWidths[i] = len(tsString)
+		if w := runewidth.StringWidth(tsString); w > colWidths[i] {
+			colWidths[i] = w
 		}
 	}
 
 	// Calculate total table width for single-row entries like Diff
-	totalWidth := 1 // Account for the initial "|"
+	totalWidth := 1 // initial "|"
 	for _, width := range colWidths {
-		totalWidth += width + 3 // Column width + padding and borders
+		totalWidth += width + 3 // width + " | "
 	}
-	totalWidth -= 1 // Remove the extra space after the last column
+	totalWidth -= 1 // remove extra space after last column
 
-	// Create a formatted table
 	var sb strings.Builder
-
-	// Open telegram formatting
 	sb.WriteString("```\n")
 
-	// Format headers
+	// Headers
 	sb.WriteString("| ")
 	for i, header := range table.Headers {
-		sb.WriteString(fmt.Sprintf("%-*s | ", colWidths[i], header))
+		sb.WriteString(padRight(header, colWidths[i]))
+		sb.WriteString(" | ")
 	}
 	sb.WriteString("\n")
 
-	// Add separator
+	// Separator
 	sb.WriteString("|-")
 	for _, width := range colWidths {
 		sb.WriteString(strings.Repeat("-", width+2))
 	}
 	sb.WriteString("|\n")
 
-	// Format rows
+	// Rows
 	for _, row := range table.Rows {
 		sb.WriteString("| ")
 		for j, cell := range row {
-			truncated := truncateWithEllipsis(cell, maxStringLength)
-			sb.WriteString(fmt.Sprintf("%-*s | ", colWidths[j], truncated))
+			// Add skull emoji if this is the SorryBro player
+			displayCell := cell
+			if cell == table.SorryBro && cell != "" {
+				// Check if we need to truncate
+				withSkull := skull + " " + cell
+				skullWidth := runewidth.StringWidth(skull)
+				if runewidth.StringWidth(withSkull) > maxStringLength {
+					// Truncate the name, add skull before the name
+					truncatedName := runewidth.Truncate(cell, maxStringLength-skullWidth-4, "")
+					displayCell = skull + " " + truncatedName + "..."
+				} else {
+					displayCell = withSkull
+				}
+			} else {
+				displayCell = truncateVisible(cell, maxStringLength)
+			}
+			sb.WriteString(padRight(displayCell, colWidths[j]))
+			sb.WriteString(" | ")
 		}
 		sb.WriteString("\n")
 	}
 
-	// Add total scores
+	// Totals
 	sb.WriteString("|-")
 	for _, width := range colWidths {
 		sb.WriteString(strings.Repeat("-", width+2))
 	}
 	sb.WriteString("|\n")
-	sb.WriteString(fmt.Sprintf("| %-*s | %-*s |\n", colWidths[0], "TS: "+table.TeamScore[0], colWidths[1], "TS: "+table.TeamScore[1]))
+	left := "TS: " + table.TeamScore[0]
+	right := "TS: " + table.TeamScore[1]
+	sb.WriteString(fmt.Sprintf("| %s | %s |\n", padRight(left, colWidths[0]), padRight(right, colWidths[1])))
 
-	// Calculate percentage difference
+	// Percentage diff
 	percentDiff := calculatePercentageDifference(table.TeamScore[0], table.TeamScore[1])
-
-	// Add final score difference as a single-row entry with percentage
 	diffText := fmt.Sprintf("Diff: %s (%s%%)", table.ScoreDifference, percentDiff)
-	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, diffText))
+	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(diffText, totalWidth-3)))
 
+	// Side suggestion
 	sb.WriteString("|-")
 	for _, width := range colWidths {
 		sb.WriteString(strings.Repeat("-", width+2))
@@ -101,51 +131,48 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 		t1Side = "Team 1 начинает за T"
 		t2Side = "Team 2 начинает за CT"
 	}
-	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, t1Side))
-	sb.WriteString(fmt.Sprintf("| %-*s |\n", totalWidth-3, t2Side))
+	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(t1Side, totalWidth-3)))
+	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(t2Side, totalWidth-3)))
+
+	sb.WriteString("|-")
+	for _, width := range colWidths {
+		sb.WriteString(strings.Repeat("-", width+2))
+	}
+	sb.WriteString("|\n")
+	skullText := `(✱) - цель 'Сорян, Братан'`
+	giftText := `Приз - Phoenix Case $8`
+	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(skullText, totalWidth-3)))
+	sb.WriteString(fmt.Sprintf("| %s |\n", padRight(giftText, totalWidth-3)))
+
 	sb.WriteString("|-")
 	for _, width := range colWidths {
 		sb.WriteString(strings.Repeat("-", width+2))
 	}
 	sb.WriteString("|\n")
 
-	// Close telegram formatting
 	sb.WriteString("```\n")
-
 	return sb.String()
 }
 
-// calculatePercentageDifference calculates the percentage difference between two score strings
 func calculatePercentageDifference(score1, score2 string) string {
-	// Parse scores to float
 	var s1, s2 float64
 	fmt.Sscanf(score1, "%f", &s1)
 	fmt.Sscanf(score2, "%f", &s2)
-
-	// Avoid division by zero
 	if s1 == 0 && s2 == 0 {
 		return "0.0"
 	}
-
-	// Calculate average score
-	avgScore := (s1 + s2) / 2
-
-	// Calculate absolute difference
-	absDiff := math.Abs(s1 - s2)
-
-	// Calculate percentage difference relative to average
-	percentDiff := (absDiff / avgScore) * 100
-
-	// Format to one decimal place
-	return fmt.Sprintf("%.1f", percentDiff)
+	avg := (s1 + s2) / 2
+	diff := math.Abs(s1 - s2)
+	return fmt.Sprintf("%.1f", (diff/avg)*100)
 }
 
-func truncateWithEllipsis(s string, maxLen int) string {
-	if len(s) > maxLen {
-		if maxLen > 3 {
-			return s[:maxLen-3] + "..."
-		}
-		return s[:maxLen] // Если maxLen <= 3, возвращаем обрезанное без ...
+func truncateVisible(s string, maxLen int) string {
+	if runewidth.StringWidth(s) <= maxLen {
+		return s
 	}
-	return s
+	return runewidth.Truncate(s, maxLen, "...")
+}
+
+func padRight(s string, width int) string {
+	return runewidth.FillRight(s, width)
 }

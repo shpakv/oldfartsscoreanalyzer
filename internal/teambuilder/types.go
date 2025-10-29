@@ -10,7 +10,7 @@ type TeamPlayer struct {
 	// Score - количественная характеристика игрока.
 	// Может представлять собой рейтинг, навыки или другой числовой показатель.
 	// Используется для балансировки команд.
-	Score float64 `json:"score"`
+	Score float64
 }
 
 // Team представляет собой коллекцию игроков.
@@ -56,6 +56,7 @@ type Constraints []Constraint
 type TeamConfiguration struct {
 	Players     Team        `json:"players"`
 	Constraints Constraints `json:"constraints"`
+	SorryBro    *string     `json:"sorryBro,ommitempty"`
 }
 
 func (t Team) Score() float64 {

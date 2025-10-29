@@ -1,9 +1,10 @@
 package teamtable
 
 import (
-	"github.com/stretchr/testify/assert"
 	"oldfartscounter/internal/teambuilder"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTeamTable(t *testing.T) {

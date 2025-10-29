@@ -17,8 +17,8 @@ func NewNotifier(handler API, formatter teamtable.Formatter) *Notifier {
 	}
 }
 
-func (n *Notifier) Notify(team1, team2 teambuilder.Team) error {
-	teamTable := teamtable.NewTeamTable(team1, team2)
+func (n *Notifier) Notify(team1, team2 teambuilder.Team, sorryBro string) error {
+	teamTable := teamtable.NewTeamTable(team1, team2, sorryBro)
 	message := n.formatter.Format(teamTable)
 
 	return n.handler.SendMessage(message)

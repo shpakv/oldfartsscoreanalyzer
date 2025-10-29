@@ -13,10 +13,17 @@ const ExpectedOutput = "" +
 	"|-------------------------------|\n" +
 	"| Player1     | Player3         | \n" +
 	"| Player2     | Player4         | \n" +
-	"|             | IncrediblyLo... | \n" +
+	"|             | (✱) Mr. Tits... | \n" +
 	"|-------------------------------|\n" +
 	"| TS: 8000.00 | TS: 7000.00     |\n" +
-	"| Diff: 1000.00                 |\n" +
+	"| Diff: 1000.00 (13.3%)         |\n" +
+	"|-------------------------------|\n" +
+	"| Team 1 начинает за T          |\n" +
+	"| Team 2 начинает за CT         |\n" +
+	"|-------------------------------|\n" +
+	"| (✱) - цель 'Сорян, Братан'    |\n" +
+	"| Приз - Phoenix Case $8        |\n" +
+	"|-------------------------------|\n" +
 	"```\n"
 
 func TestFormatter_Format(t *testing.T) {
@@ -25,10 +32,11 @@ func TestFormatter_Format(t *testing.T) {
 		Rows: [][]string{
 			{"Player1", "Player3"},
 			{"Player2", "Player4"},
-			{"", "IncrediblyLongNickNameOfPlayer5"},
+			{"", "Mr. Titspervert"},
 		},
 		TeamScore:       []string{"8000.00", "7000.00"},
 		ScoreDifference: "1000.00",
+		SorryBro:        "Mr. Titspervert",
 	}
 
 	f := &TeamTableFormatter{}
