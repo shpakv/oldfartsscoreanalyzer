@@ -41,7 +41,7 @@ func NewTeamBuilder(repo PlayerRepository) *TeamBuilder {
 	return &TeamBuilder{repo: repo}
 }
 
-// Build выполняет распределение игроков по командам с учетом заданных ограничений.
+// buildTwoTeams выполняет распределение игроков по двум командам с учетом заданных ограничений.
 // Использует комбинацию нескольких алгоритмов распределения для достижения оптимального результата.
 //
 // Параметры:
@@ -58,7 +58,7 @@ func NewTeamBuilder(repo PlayerRepository) *TeamBuilder {
 //  5. Оптимизация полученного результата
 //
 // Сложность: O(2^n), где n - количество игроков
-func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
+func (b *TeamBuilder) buildTwoTeams(config *TeamConfiguration) (Team, Team) {
 	players := b.getPlayersScore(config.Players)
 	constraints := config.Constraints
 
@@ -68,11 +68,12 @@ func (b *TeamBuilder) Build(config *TeamConfiguration) (Team, Team) {
 	}
 
 	// Сначала обработаем ограничения типа ConstraintTogether
-	linkedPlayers := make(map[string]string)
+	// Используем map[string][]string для поддержки множественных связей (цепочек)
+	linkedPlayers := make(map[string][]string)
 	for _, constraint := range constraints {
 		if constraint.Type == ConstraintTogether {
-			linkedPlayers[constraint.Player1] = constraint.Player2
-			linkedPlayers[constraint.Player2] = constraint.Player1
+			linkedPlayers[constraint.Player1] = append(linkedPlayers[constraint.Player1], constraint.Player2)
+			linkedPlayers[constraint.Player2] = append(linkedPlayers[constraint.Player2], constraint.Player1)
 		}
 	}
 
@@ -232,7 +233,7 @@ func distributeSnake(players []TeamPlayer) (Team, Team) {
 }
 
 // Вспомогательная функция для распределения с учетом связанных игроков
-func distributeWithLinkedPlayers(players Team, linkedPlayers map[string]string) (Team, Team) {
+func distributeWithLinkedPlayers(players Team, linkedPlayers map[string][]string) (Team, Team) {
 	teamSize := len(players) / 2
 	if len(players)%2 != 0 {
 		teamSize++
@@ -293,7 +294,7 @@ func distributeWithLinkedPlayers(players Team, linkedPlayers map[string]string) 
 }
 
 // findConnectedGroups находит группы связанных игроков (компоненты связности в графе)
-func findConnectedGroups(players Team, linkedPlayers map[string]string) [][]string {
+func findConnectedGroups(players Team, linkedPlayers map[string][]string) [][]string {
 	// Создаем граф связей между игроками
 	graph := make(map[string][]string)
 	for _, player := range players {
@@ -301,12 +302,14 @@ func findConnectedGroups(players Team, linkedPlayers map[string]string) [][]stri
 	}
 
 	// Заполняем граф связями
-	for player, linked := range linkedPlayers {
-		// Проверяем, что оба игрока существуют
+	for player, linkedList := range linkedPlayers {
+		// Проверяем, что игрок существует
 		if _, ok := graph[player]; ok {
-			if _, ok := graph[linked]; ok {
-				graph[player] = append(graph[player], linked)
-				graph[linked] = append(graph[linked], player)
+			for _, linked := range linkedList {
+				// Проверяем, что связанный игрок существует
+				if _, ok := graph[linked]; ok {
+					graph[player] = append(graph[player], linked)
+				}
 			}
 		}
 	}
@@ -495,15 +498,24 @@ func (b *TeamBuilder) getPlayersScore(players Team) Team {
 	return players
 }
 
-// BuildMultiple создает переменное количество команд (2 или 4) в зависимости от конфигурации
-func (b *TeamBuilder) BuildMultiple(config *TeamConfiguration) []Team {
+// Build создает переменное количество команд (2 или 4) в зависимости от конфигурации.
+// Это основной метод для создания команд, который заменяет старые Build() и BuildMultiple().
+//
+// Параметры:
+//   - config *TeamConfiguration: конфигурация с игроками, ограничениями и количеством команд
+//
+// Возвращает:
+//   - []Team: слайс сбалансированных команд (2 или 4 команды)
+//
+// По умолчанию создает 2 команды, если numTeams не указан или некорректен.
+func (b *TeamBuilder) Build(config *TeamConfiguration) []Team {
 	numTeams := config.NumTeams
 	if numTeams != 2 && numTeams != 4 {
 		numTeams = 2 // Default to 2 teams
 	}
 
 	if numTeams == 2 {
-		team1, team2 := b.Build(config)
+		team1, team2 := b.buildTwoTeams(config)
 		return []Team{team1, team2}
 	}
 
@@ -536,11 +548,11 @@ func (b *TeamBuilder) buildFourTeams(config *TeamConfiguration) []Team {
 	})
 
 	// Создаем карту связанных игроков
-	linkedPlayers := make(map[string]string)
+	linkedPlayers := make(map[string][]string)
 	for _, constraint := range constraints {
 		if constraint.Type == ConstraintTogether {
-			linkedPlayers[constraint.Player1] = constraint.Player2
-			linkedPlayers[constraint.Player2] = constraint.Player1
+			linkedPlayers[constraint.Player1] = append(linkedPlayers[constraint.Player1], constraint.Player2)
+			linkedPlayers[constraint.Player2] = append(linkedPlayers[constraint.Player2], constraint.Player1)
 		}
 	}
 
@@ -647,7 +659,7 @@ func distributeFourTeamsGreedy(players []TeamPlayer) []Team {
 }
 
 // distributeFourTeamsWithLinked распределяет с учетом связанных игроков
-func distributeFourTeamsWithLinked(players Team, linkedPlayers map[string]string) []Team {
+func distributeFourTeamsWithLinked(players Team, linkedPlayers map[string][]string) []Team {
 	teamSize := len(players) / 4
 	if len(players)%4 != 0 {
 		teamSize++

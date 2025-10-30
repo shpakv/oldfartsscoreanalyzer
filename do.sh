@@ -12,16 +12,49 @@
 
 build() {
   local out=''
-    # separate directories to search by spaces
-    find cmd -name main.go | grep -v buddy | while read -r file; do
-      out="$(
-        echo "$file" | \
-        sed -e 's/^cmd/bin/g' \
-            -e 's/\/cmd\//\/bin\//g' \
-            -e 's/main.go/bootstrap/g'
-      )"
-        go build  -o "$out" "$file"
-    done
+  local sorry_bro="${SORRY_BRO:-}"
+  local telegram_token="${TELEGRAM_TOKEN:-}"
+  local ldflags=""
+
+  # Build ldflags if variables are set
+  if [ -n "$sorry_bro" ] || [ -n "$telegram_token" ]; then
+    ldflags="-ldflags="
+    local flags=""
+
+    if [ -n "$sorry_bro" ]; then
+      flags="${flags} -X 'main.SorryBro=${sorry_bro}'"
+    fi
+
+    if [ -n "$telegram_token" ]; then
+      flags="${flags} -X 'oldfartscounter/internal/telegram.Token=${telegram_token}'"
+    fi
+
+    ldflags="${ldflags}\"${flags}\""
+  fi
+
+  _info "Building with:"
+  _info "  SorryBro: ${sorry_bro:-<not set>}"
+  _info "  Token: ${telegram_token:+<set>}${telegram_token:-<not set>}"
+
+  # separate directories to search by spaces
+  find cmd -name main.go | grep -v buddy | while read -r file; do
+    out="$(
+      echo "$file" | \
+      sed -e 's/^cmd/bin/g' \
+          -e 's/\/cmd\//\/bin\//g' \
+          -e 's/main.go/oldfartbuilder/g'
+    )"
+
+    _info "Building $(basename "$(dirname "$file")")..."
+
+    if [ -n "$ldflags" ]; then
+      eval go build "$ldflags" -o "$out" "$file"
+    else
+      go build -o "$out" "$file"
+    fi
+
+    _info "✓ Built: $out"
+  done
 }
 
 terInit() {
@@ -103,6 +136,24 @@ _usage() {
 Usage:
 
   $_SELF build - Произвести сборку всех приложений, хранящихся в директории cmd.
+
+Build with custom variables:
+
+  SORRY_BRO="PlayerName" TELEGRAM_TOKEN="bot123:ABC" $_SELF build
+
+Examples:
+
+  # Build without variables (uses default/empty values)
+  $_SELF build
+
+  # Build with SorryBro player
+  SORRY_BRO="Looka" $_SELF build
+
+  # Build with Telegram token
+  TELEGRAM_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" $_SELF build
+
+  # Build with both
+  SORRY_BRO="Mr. Titspervert" TELEGRAM_TOKEN="bot_token_here" $_SELF build
 
 EOT
   exit 1

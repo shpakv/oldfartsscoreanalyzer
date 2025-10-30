@@ -50,6 +50,7 @@ github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.4.7 h1:tB4tNw83KcajNAz
 github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.4.7/go.mod h1:lvpyBGkZ3tZ9iSsUIcC2EWp+0ywa7aK3BLT+FwZi+mQ=
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.10.8 h1:h56mLNgpqWIL7RZOIQO634Xr569bXGTlIE83t/a0LSE=
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.10.8/go.mod h1:kK04550Xx95KI0sNmwoB7ciS9QkRwt9TojhoTMXyJdo=
+github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.9 h1:7ILIzhRlYbHmZDdkF15B+RGEO8sGbdSe0RelD0RcV6M=
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.9/go.mod h1:6LLPgzztobazqK65Q5qYsFnxwsN0v6cktuIvLC5M7DM=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.7 h1:8eUsivBQzZHqe/3FE+cqwfH+0p5Jo8PFM/QYQSmeZ+M=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.7/go.mod h1:kLPQvGUmxn/fqiCrDeohwG33bq2pQpGeY62yRO6Nrh0=

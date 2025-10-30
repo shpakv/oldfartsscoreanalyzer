@@ -19,34 +19,17 @@ func main() {
 	f := telegram.NewTeamTableFormatter()
 	notifiers := []notifier.Notifier{
 		notifier.NewConsoleNotifier(f),
-		//telegram.NewNotifier(apiHandler(), f),
+		telegram.NewNotifier(apiHandler(), f),
 	}
 	repo := teambuilder.NewPlayerRepository()
 	teamBuilder := teambuilder.NewTeamBuilder(repo)
 
-	// Проверяем количество команд
-	numTeams := c.NumTeams
-	if numTeams != 2 && numTeams != 4 {
-		numTeams = 2 // Default to 2 teams
-	}
+	teams := teamBuilder.Build(c)
 
-	if numTeams == 4 {
-		// Используем новый метод для 4 команд
-		teams := teamBuilder.BuildMultiple(c)
-		for _, n := range notifiers {
-			err := n.NotifyMultiple(teams, SorryBro)
-			if err != nil {
-				log.Fatalf("Failed to notify old farts: %v", err)
-			}
-		}
-	} else {
-		// Используем старый метод для 2 команд
-		team1, team2 := teamBuilder.Build(c)
-		for _, n := range notifiers {
-			err := n.Notify(team1, team2, SorryBro)
-			if err != nil {
-				log.Fatalf("Failed to notify old farts: %v", err)
-			}
+	for _, n := range notifiers {
+		err := n.Notify(teams, SorryBro)
+		if err != nil {
+			log.Fatalf("Failed to notify old farts: %v", err)
 		}
 	}
 }

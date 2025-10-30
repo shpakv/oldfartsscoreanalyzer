@@ -49,7 +49,7 @@ func TestBuildMultiple_TwoTeams(t *testing.T) {
 		NumTeams:    2,
 	}
 
-	teams := builder.BuildMultiple(config)
+	teams := builder.Build(config)
 
 	assert.Len(t, teams, 2, "Should return 2 teams")
 
@@ -84,7 +84,7 @@ func TestBuildMultiple_FourTeams(t *testing.T) {
 		NumTeams:    4,
 	}
 
-	teams := builder.BuildMultiple(config)
+	teams := builder.Build(config)
 
 	assert.Len(t, teams, 4, "Should return 4 teams")
 
@@ -131,7 +131,7 @@ func TestBuildMultiple_DefaultToTwoTeams(t *testing.T) {
 		NumTeams:    0, // Invalid, should default to 2
 	}
 
-	teams := builder.BuildMultiple(config)
+	teams := builder.Build(config)
 
 	assert.Len(t, teams, 2, "Should default to 2 teams when NumTeams is invalid")
 }
@@ -157,7 +157,7 @@ func TestBuildMultiple_WithConstraintsTogether(t *testing.T) {
 		NumTeams: 4,
 	}
 
-	teams := builder.BuildMultiple(config)
+	teams := builder.Build(config)
 
 	// Find which team has Player1
 	var player1Team int = -1
@@ -198,7 +198,7 @@ func TestBuildMultiple_WithConstraintsSeparate(t *testing.T) {
 		NumTeams: 4,
 	}
 
-	teams := builder.BuildMultiple(config)
+	teams := builder.Build(config)
 
 	// Find which team has Player1 and Player2
 	var player1Team int = -1
@@ -228,7 +228,7 @@ func TestBuildMultiple_EmptyPlayers(t *testing.T) {
 		NumTeams:    4,
 	}
 
-	teams := builder.BuildMultiple(config)
+	teams := builder.Build(config)
 
 	assert.Len(t, teams, 4, "Should return 4 teams")
 	for _, team := range teams {
@@ -249,7 +249,7 @@ func TestBuildMultiple_LessThanFourPlayers(t *testing.T) {
 		NumTeams:    4,
 	}
 
-	teams := builder.BuildMultiple(config)
+	teams := builder.Build(config)
 
 	assert.Len(t, teams, 4, "Should return 4 teams")
 

@@ -7,8 +7,7 @@ import (
 )
 
 type Notifier interface {
-	Notify(team1, team2 teambuilder.Team, sorryBro string) error
-	NotifyMultiple(teams []teambuilder.Team, sorryBro string) error
+	Notify(teams []teambuilder.Team, sorryBro string) error
 }
 
 type consoleNotifier struct {
@@ -19,14 +18,7 @@ func NewConsoleNotifier(formatter teamtable.Formatter) Notifier {
 	return &consoleNotifier{formatter: formatter}
 }
 
-func (c *consoleNotifier) Notify(team1, team2 teambuilder.Team, sorryBro string) error {
-	teamTable := teamtable.NewTeamTable(team1, team2, sorryBro)
-	message := c.formatter.Format(teamTable)
-	fmt.Println(message)
-	return nil
-}
-
-func (c *consoleNotifier) NotifyMultiple(teams []teambuilder.Team, sorryBro string) error {
+func (c *consoleNotifier) Notify(teams []teambuilder.Team, sorryBro string) error {
 	teamTable := teamtable.NewTeamTableMultiple(teams, sorryBro)
 	message := c.formatter.Format(teamTable)
 	fmt.Println(message)
