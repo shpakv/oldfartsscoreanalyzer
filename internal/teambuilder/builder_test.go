@@ -192,7 +192,7 @@ func TestTeamBuilder_Calculate(t *testing.T) {
 				playerBInTeam1 := playerInTeam(team1, "Player B")
 				playerAInTeam2 := playerInTeam(team2, "Player A")
 				playerBInTeam2 := playerInTeam(team2, "Player B")
-				if !((playerAInTeam1 && playerBInTeam1) || (playerAInTeam2 && playerBInTeam2)) {
+				if !(playerAInTeam1 && playerBInTeam1) && !(playerAInTeam2 && playerBInTeam2) {
 					return false
 				}
 				// 3. Проверка ограничения "раздельно"
@@ -418,7 +418,7 @@ func TestConstraintTogether(t *testing.T) {
 	player1InTeam2 := playerInTeam(team2, "Player1")
 	player2InTeam2 := playerInTeam(team2, "Player2")
 
-	if !((player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2)) {
+	if !(player1InTeam1 && player2InTeam1) && !(player1InTeam2 && player2InTeam2) {
 		t.Errorf("ConstraintTogether not satisfied. Players should be in the same team")
 		t.Logf("Team1: %v", team1)
 		t.Logf("Team2: %v", team2)
@@ -487,7 +487,7 @@ func TestMultipleConstraints(t *testing.T) {
 	player6InTeam1 := playerInTeam(team1, "Player6")
 
 	// Проверка ConstraintTogether для Player1 и Player2
-	if !((player1InTeam1 && player2InTeam1) || (!player1InTeam1 && !player2InTeam1)) {
+	if !(player1InTeam1 && player2InTeam1) && !(!player1InTeam1 && !player2InTeam1) {
 		t.Errorf("ConstraintTogether not satisfied for Player1 and Player2")
 	}
 
@@ -497,7 +497,7 @@ func TestMultipleConstraints(t *testing.T) {
 	}
 
 	// Проверка ConstraintTogether для Player5 и Player6
-	if !((player5InTeam1 && player6InTeam1) || (!player5InTeam1 && !player6InTeam1)) {
+	if !(player5InTeam1 && player6InTeam1) && !(!player5InTeam1 && !player6InTeam1) {
 		t.Errorf("ConstraintTogether not satisfied for Player5 and Player6")
 	}
 }
@@ -758,8 +758,8 @@ func TestCyclicConstraints(t *testing.T) {
 	player2InTeam1 := playerInTeam(team1, "Player2")
 	player3InTeam1 := playerInTeam(team1, "Player3")
 
-	if !((player1InTeam1 && player2InTeam1 && player3InTeam1) ||
-		(!player1InTeam1 && !player2InTeam1 && !player3InTeam1)) {
+	if !(player1InTeam1 && player2InTeam1 && player3InTeam1) &&
+		!(!player1InTeam1 && !player2InTeam1 && !player3InTeam1) {
 		t.Errorf("Cyclic ConstraintTogether not satisfied. Players 1, 2, and 3 should be in the same team")
 		t.Logf("Team1: %v", team1)
 		t.Logf("Team2: %v", team2)

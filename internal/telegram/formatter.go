@@ -13,6 +13,7 @@ import (
 const maxStringLength = 15
 
 const skull = "(✱)" // маркер цели
+const zeroScore = "0.0"
 
 type TeamTableFormatter struct{}
 
@@ -86,7 +87,7 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 		sb.WriteString("| ")
 		for j, cell := range row {
 			// Add skull emoji if this is the SorryBro player (only for 2 teams)
-			displayCell := cell
+			var displayCell string
 			if len(table.Headers) == 2 && cell == table.SorryBro && cell != "" {
 				// Check if we need to truncate
 				withSkull := skull + " " + cell
@@ -191,33 +192,21 @@ func (f *TeamTableFormatter) Format(table *teamtable.TeamTable) string {
 	return sb.String()
 }
 
-func calculatePercentageDifference(score1, score2 string) string {
-	var s1, s2 float64
-	fmt.Sscanf(score1, "%f", &s1)
-	fmt.Sscanf(score2, "%f", &s2)
-	if s1 == 0 && s2 == 0 {
-		return "0.0"
-	}
-	avg := (s1 + s2) / 2
-	diff := math.Abs(s1 - s2)
-	return fmt.Sprintf("%.1f", (diff/avg)*100)
-}
-
 func calculatePercentageDifferenceMultiple(scores []string) string {
 	if len(scores) == 0 {
-		return "0.0"
+		return zeroScore
 	}
 
 	// Parse all scores
 	floatScores := make([]float64, len(scores))
 	sum := 0.0
 	for i, scoreStr := range scores {
-		fmt.Sscanf(scoreStr, "%f", &floatScores[i])
+		_, _ = fmt.Sscanf(scoreStr, "%f", &floatScores[i])
 		sum += floatScores[i]
 	}
 
 	if sum == 0 {
-		return "0.0"
+		return zeroScore
 	}
 
 	// Find min and max

@@ -2,8 +2,9 @@ package oldfart
 
 import (
 	"context"
-	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"oldfartscounter/internal/aws/dynamodb"
+
+	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 type DynamoDBRepository struct {

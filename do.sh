@@ -76,6 +76,28 @@ destroy() {
   terraform -chdir=./terraform destroy -auto-approve
 }
 
+preCommit() {
+  _info "Running pre-commit checks..."
+
+  _info "Step 1/3: Running goimports..."
+  if ! _testCmd goimports; then
+    _warn "goimports not found, installing..."
+    go install golang.org/x/tools/cmd/goimports@latest
+  fi
+  goimports -w .
+
+  _info "Step 2/3: Running golangci-lint..."
+  if ! _testCmd golangci-lint; then
+    _error "golangci-lint not found. Please install: https://golangci-lint.run/usage/install/"
+  fi
+  golangci-lint run
+
+  _info "Step 3/3: Running tests..."
+  go test ./...
+
+  _info "✓ All pre-commit checks passed!"
+}
+
 ###############################################################################
 # private functions
 ###############################################################################

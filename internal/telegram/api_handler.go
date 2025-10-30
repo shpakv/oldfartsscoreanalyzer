@@ -56,7 +56,9 @@ func (d *DefaultAPIHandler) SendMessage(message string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed with status code: %d", resp.StatusCode)
@@ -72,7 +74,9 @@ func (d *DefaultAPIHandler) GetAdministrators() ([]User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get administrators: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed with status code: %d", resp.StatusCode)
@@ -96,7 +100,9 @@ func (d *DefaultAPIHandler) GetChatMember(userId string) (*User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get administrators: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed with status code: %d", resp.StatusCode)

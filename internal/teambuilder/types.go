@@ -56,7 +56,7 @@ type Constraints []Constraint
 type TeamConfiguration struct {
 	Players     Team        `json:"players"`
 	Constraints Constraints `json:"constraints"`
-	SorryBro    *string     `json:"sorryBro,ommitempty"`
+	SorryBro    *string     `json:"sorryBro,omitempty"`
 	NumTeams    int         `json:"numTeams"` // Number of teams to create (2 or 4)
 }
 

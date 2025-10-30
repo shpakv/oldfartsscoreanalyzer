@@ -160,8 +160,8 @@ func TestBuildMultiple_WithConstraintsTogether(t *testing.T) {
 	teams := builder.Build(config)
 
 	// Find which team has Player1
-	var player1Team int = -1
-	var player2Team int = -1
+	player1Team := -1
+	player2Team := -1
 
 	for i, team := range teams {
 		for _, player := range team {
@@ -201,8 +201,8 @@ func TestBuildMultiple_WithConstraintsSeparate(t *testing.T) {
 	teams := builder.Build(config)
 
 	// Find which team has Player1 and Player2
-	var player1Team int = -1
-	var player2Team int = -1
+	player1Team := -1
+	player2Team := -1
 
 	for i, team := range teams {
 		for _, player := range team {

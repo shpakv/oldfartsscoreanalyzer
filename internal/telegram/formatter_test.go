@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"oldfartscounter/internal/teamtable"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const ExpectedOutput = "" +
