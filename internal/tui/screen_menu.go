@@ -11,9 +11,8 @@ import (
 )
 
 func updateMenu(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
 		case "up", "k":
 			if m.menuCursor > 0 {
 				m.menuCursor--
@@ -22,7 +21,7 @@ func updateMenu(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.menuCursor < 1 {
 				m.menuCursor++
 			}
-		case "enter":
+		case keyEnter:
 			switch m.menuCursor {
 			case 0: // Создать команды
 				m.currentScreen = ScreenPlayers
@@ -34,9 +33,9 @@ func updateMenu(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 1: // Выход
 				return m, tea.Quit
 			}
-		case "q", "й", "ctrl+c": // й - это q на русской раскладке
+		case "q", "й", keyCtrlC: // й - это q на русской раскладке
 			return m, tea.Quit
-		case "esc":
+		case keyEsc:
 			m.errorMsg = ""
 		}
 	}
@@ -69,7 +68,7 @@ func viewMenu(m Model) string {
 	for i, item := range menuItems {
 		cursor := " "
 		if m.menuCursor == i {
-			cursor = "►"
+			cursor = keyCursor
 			item = styles.SelectedItemStyle.Render(item)
 		} else {
 			item = styles.UnselectedItemStyle.Render(item)

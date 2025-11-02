@@ -11,15 +11,14 @@ import (
 )
 
 func updatePlayers(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		// Режим поиска - обрабатываем ввод текста
 		if m.searchMode {
-			switch msg.String() {
-			case "esc":
+			switch keyMsg.String() {
+			case keyEsc:
 				// Выход из режима поиска
 				m.searchMode = false
-			case "enter":
+			case keyEnter:
 				// Выход из режима поиска
 				m.searchMode = false
 			case "backspace":
@@ -28,12 +27,12 @@ func updatePlayers(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
 					m.cursor = 0
 				}
-			case "ctrl+c":
+			case keyCtrlC:
 				return m, tea.Quit
 			default:
 				// Добавление символа в поиск (только печатаемые символы)
-				if len(msg.String()) == 1 && msg.String()[0] >= 32 && msg.String()[0] <= 126 {
-					m.searchQuery += msg.String()
+				if len(keyMsg.String()) == 1 && keyMsg.String()[0] >= 32 && keyMsg.String()[0] <= 126 {
+					m.searchQuery += keyMsg.String()
 					m.cursor = 0
 				}
 			}
@@ -41,7 +40,7 @@ func updatePlayers(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Режим навигации
-		switch msg.String() {
+		switch keyMsg.String() {
 		case "up", "k", "л": // л - это k на русской раскладке
 			if m.cursor > 0 {
 				m.cursor--
@@ -51,7 +50,7 @@ func updatePlayers(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(filteredPlayers)-1 {
 				m.cursor++
 			}
-		case "enter":
+		case keyEnter:
 			// Переключаем выбор игрока
 			filteredPlayers := m.getFilteredPlayers()
 			if m.cursor < len(filteredPlayers) {
@@ -84,7 +83,7 @@ func updatePlayers(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Очистить поиск
 			m.searchQuery = ""
 			m.cursor = 0
-		case "tab":
+		case keyTab:
 			// Переход к следующему экрану (constraints)
 			if len(m.getSelectedPlayersList()) > 0 {
 				m.currentScreen = ScreenConstraints
@@ -94,7 +93,7 @@ func updatePlayers(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.errorMsg = "Выберите хотя бы одного игрока"
 			}
-		case "esc":
+		case keyEsc:
 			// Возврат в меню
 			m.currentScreen = ScreenMenu
 			m.cursor = 0
@@ -177,7 +176,7 @@ func viewPlayers(m Model) string {
 	// Улучшенная логика скроллинга
 	const visibleLines = 15
 	visibleStart := 0
-	visibleEnd := visibleLines
+	visibleEnd := 0
 
 	if len(filteredPlayers) > visibleLines {
 		// Скроллим только когда курсор приближается к нижней границе
@@ -221,7 +220,7 @@ func viewPlayers(m Model) string {
 		cursor := " "
 		itemStyle := styles.UnselectedItemStyle
 		if i == m.cursor {
-			cursor = "►"
+			cursor = keyCursor
 			itemStyle = styles.SelectedItemStyle
 		}
 

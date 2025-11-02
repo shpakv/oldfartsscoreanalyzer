@@ -2,21 +2,17 @@ package tui
 
 import (
 	"fmt"
-	"math"
 	"oldfartscounter/internal/teambuilder"
 	"oldfartscounter/internal/tui/styles"
-	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
 func updateResults(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
 		case "t", "е": // е - это t на русской раскладке
 			// Отправить в Telegram (немедленно)
 			sorryBroName := ""
@@ -36,11 +32,11 @@ func updateResults(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "r", "к": // к - это r на русской раскладке
 			// Перегенерировать команды
 			m.generateTeams()
-		case "esc":
+		case keyEsc:
 			// Возврат в меню
 			m.currentScreen = ScreenMenu
 			m.cursor = 0
-		case "q", "й", "ctrl+c": // й - это q на русской раскладке
+		case "q", "й", keyCtrlC: // й - это q на русской раскладке
 			return m, tea.Quit
 		}
 	}
@@ -215,18 +211,20 @@ func renderBalance(m Model) string {
 	}
 
 	// Оценка баланса
-	balanceText := ""
-	balanceStyle := styles.SuccessStyle
-	if diffPercent < 2.0 {
+	var balanceText string
+	var balanceStyle lipgloss.Style
+
+	switch {
+	case diffPercent < 2.0:
 		balanceText = "✓ Отлично!"
 		balanceStyle = styles.SuccessStyle
-	} else if diffPercent < 5.0 {
+	case diffPercent < 5.0:
 		balanceText = "✓ Хорошо"
 		balanceStyle = styles.SuccessStyle
-	} else if diffPercent < 10.0 {
+	case diffPercent < 10.0:
 		balanceText = "⚠ Удовлетворительно"
 		balanceStyle = styles.WarningStyle
-	} else {
+	default:
 		balanceText = "⚠ Плохой баланс"
 		balanceStyle = styles.ErrorStyle
 	}
@@ -243,97 +241,4 @@ func renderBalance(m Model) string {
 		Padding(1, 2).
 		Width(100).
 		Render(result)
-}
-
-// saveConfig сохраняет конфигурацию в файл
-func (m *Model) saveConfig() error {
-	// Маршалим конфигурацию в JSON5
-	data, err := json5.Marshal(m.config)
-	if err != nil {
-		return fmt.Errorf("не удалось сериализовать конфигурацию: %v", err)
-	}
-
-	// Добавляем комментарии в начало файла
-	comments := `// Доступные игроки (полный список):
-// povidlo boy, maslina420, Looka, Astracore, C.C.Capwell,
-// jojo, d3msk, whereispie, Rezec, Mr. Titspervert,
-// Pyatka, Fitz [BadCom], çruşş, T1TAN, Chu [BadCom],
-// Крыса Сплинтер, Boberto, Баба Валя, cyberhawk2000n, petya_vpered,
-// Gharb, atlas, Djafar-AGA, BingoBongo, Mr. Your mom,
-// Mirshdd, Extain, Lexus, Station77
-
-// ───────────────────────────────────────────────────────────────
-// Инструкция по constraints:
-//
-// "constraints" — список правил, которые влияют на распределение игроков по командам.
-//
-// Каждый элемент имеет вид:
-//   {
-//     "type": "together" | "separate",
-//     "player1": "<ник игрока>",
-//     "player2": "<ник игрока>"
-//   }
-//
-// • "together"  — эти два игрока должны попасть в одну команду.
-// • "separate" — эти два игрока НЕ должны попасть в одну команду.
-//
-// Пример:
-//   {
-//     "type": "together",
-//     "player1": "Lupa",
-//     "player2": "Pupa"
-//   }
-//
-// Можно указывать несколько правил одновременно.
-// ───────────────────────────────────────────────────────────────
-//
-// "numTeams" — количество команд для создания (2 или 4).
-// • 2 — разделить игроков на 2 команды (по умолчанию)
-// • 4 — разделить игроков на 4 команды
-// ───────────────────────────────────────────────────────────────
-
-`
-
-	finalData := comments + string(data)
-
-	// Записываем в файл
-	if err := os.WriteFile(m.configPath, []byte(finalData), 0644); err != nil {
-		return fmt.Errorf("не удалось записать файл: %v", err)
-	}
-
-	return nil
-}
-
-// calculateBalanceQuality вычисляет качество баланса (0-100, где 100 - идеально)
-func calculateBalanceQuality(teams []teambuilder.Team) float64 {
-	if len(teams) == 0 {
-		return 0
-	}
-
-	minScore := teams[0].Score()
-	maxScore := teams[0].Score()
-	avgScore := 0.0
-
-	for _, team := range teams {
-		score := team.Score()
-		if score < minScore {
-			minScore = score
-		}
-		if score > maxScore {
-			maxScore = score
-		}
-		avgScore += score
-	}
-	avgScore /= float64(len(teams))
-
-	if avgScore == 0 {
-		return 100
-	}
-
-	diff := maxScore - minScore
-	diffPercent := (diff / avgScore) * 100
-
-	// Чем меньше разница, тем лучше (100 - идеально)
-	quality := 100 - math.Min(diffPercent*10, 100)
-	return quality
 }

@@ -43,13 +43,9 @@ type Model struct {
 	// Constraints
 	constraints []teambuilder.Constraint
 
-	// Индекс выбранного constraint для редактирования
-	selectedConstraint int
-
 	// Настройки
-	numTeams      int     // 2 или 4
-	sorryBro      *string // Игрок, который остается за бортом
-	sorryBroIndex int     // Индекс для выбора sorryBro
+	numTeams int     // 2 или 4
+	sorryBro *string // Игрок, который остается за бортом
 
 	// Результаты генерации
 	generatedTeams []teambuilder.Team
@@ -114,10 +110,7 @@ func loadAllPlayers(repo teambuilder.PlayerRepository) []teambuilder.TeamPlayer 
 
 	players := make([]teambuilder.TeamPlayer, 0, len(allPlayers))
 	for _, player := range allPlayers {
-		players = append(players, teambuilder.TeamPlayer{
-			NickName: player.NickName,
-			Score:    player.Score,
-		})
+		players = append(players, teambuilder.TeamPlayer(player))
 	}
 
 	return players
@@ -138,7 +131,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case keyCtrlC, "q":
 			if m.currentScreen == ScreenMenu {
 				return m, tea.Quit
 			}

@@ -16,12 +16,11 @@ const sorryBroTarget = "maslina420"
 func updateSettings(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	selectedPlayers := m.getSelectedPlayersList()
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
 		case "up", "k", "л":
 			// Убрана навигация - только одна настройка (количество команд)
-		case "down", "j", "о":
+		case keyDown, "j", "о":
 			// Убрана навигация - только одна настройка (количество команд)
 		case "left", "h", "р":
 			// Переключение количества команд
@@ -33,14 +32,14 @@ func updateSettings(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.numTeams == 2 {
 				m.numTeams = 4
 			}
-		case "space", "enter":
+		case "space", keyEnter:
 			// Переключение количества команд
 			if m.numTeams == 2 {
 				m.numTeams = 4
 			} else {
 				m.numTeams = 2
 			}
-		case "tab":
+		case keyTab:
 			// Проверяем есть ли целевой игрок в списке выбранных
 			sorryBroName := sorryBroTarget
 			targetFound := false
@@ -62,7 +61,7 @@ func updateSettings(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.generateTeams()
 			m.currentScreen = ScreenResults
 			m.cursor = 0
-		case "esc":
+		case keyEsc:
 			// Возврат к constraints
 			m.currentScreen = ScreenConstraints
 			m.cursor = 0

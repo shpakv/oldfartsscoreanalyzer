@@ -11,18 +11,17 @@ import (
 )
 
 func updateConstraints(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		if m.editingConstraint {
-			return updateConstraintEditor(m, msg)
+			return updateConstraintEditor(m, keyMsg)
 		}
 
-		switch msg.String() {
+		switch keyMsg.String() {
 		case "up", "k", "л":
 			if m.cursor > 0 {
 				m.cursor--
 			}
-		case "down", "j", "о":
+		case keyDown, "j", "о":
 			if m.cursor < len(m.constraints) {
 				m.cursor++
 			}
@@ -48,11 +47,11 @@ func updateConstraints(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor--
 				}
 			}
-		case "tab", "enter":
+		case keyTab, keyEnter:
 			// Переход к настройкам
 			m.currentScreen = ScreenSettings
 			m.cursor = 0
-		case "esc":
+		case keyEsc:
 			// Возврат к выбору игроков
 			m.currentScreen = ScreenPlayers
 			m.cursor = 0
@@ -95,7 +94,7 @@ func updateConstraintEditor(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.constraintType = teambuilder.ConstraintTogether
 			}
 		}
-	case "down", "j", "о":
+	case keyDown, "j", "о":
 		// Навигация вниз в зависимости от активного поля
 		switch m.constraintFieldFocus {
 		case 0: // Игрок 1
@@ -111,7 +110,7 @@ func updateConstraintEditor(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.constraintType = teambuilder.ConstraintSeparate
 			}
 		}
-	case "tab":
+	case keyTab:
 		// Переключение между полями вперед
 		m.constraintFieldFocus = (m.constraintFieldFocus + 1) % 3
 	case "left", "h", "р":
@@ -127,7 +126,7 @@ func updateConstraintEditor(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.constraintType = teambuilder.ConstraintTogether
 		}
-	case "enter":
+	case keyEnter:
 		// Сохранить constraint
 		if len(selectedPlayers) >= 2 {
 			player1 := m.allPlayers[selectedPlayers[m.constraintPlayer1Idx]].NickName
@@ -151,7 +150,7 @@ func updateConstraintEditor(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.errorMsg = "Нельзя выбрать одного и того же игрока"
 			}
 		}
-	case "esc":
+	case keyEsc:
 		// Отмена редактирования
 		m.editingConstraint = false
 		m.editingConstraintNew = false
@@ -191,7 +190,7 @@ func viewConstraints(m Model) string {
 			cursor := " "
 			itemStyle := styles.UnselectedItemStyle
 			if i == m.cursor {
-				cursor = "►"
+				cursor = keyCursor
 				itemStyle = styles.SelectedItemStyle
 			}
 
