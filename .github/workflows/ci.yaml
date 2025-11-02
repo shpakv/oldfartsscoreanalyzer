@@ -46,12 +46,15 @@ jobs:
             exit 1
           fi
 
+      # Установка golangci-lint v2
+      - name: Install golangci-lint v2
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.2.1
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
       # Линтер (с явным указанием конфигурации)
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --config=.golangci.yml --verbose
+      - name: Run golangci-lint v2
+        run: golangci-lint run --config=.golangci.yml --verbose
 
   # 2) Шаг Build
   build:
