@@ -12,14 +12,14 @@ import (
 	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
-var SorryBro = ""
+var SorryBro = "Mr. Titspervert"
 
 func main() {
 	c := config()
 	f := telegram.NewTeamTableFormatter()
 	notifiers := []notifier.Notifier{
 		notifier.NewConsoleNotifier(f),
-		telegram.NewNotifier(apiHandler(), f),
+		//telegram.NewNotifier(apiHandler(), f),
 	}
 	repo := teambuilder.NewPlayerRepository()
 	teamBuilder := teambuilder.NewTeamBuilder(repo)
