@@ -129,7 +129,9 @@ func TestBuildPlayerRatings_NewbieVsVeteran(t *testing.T) {
 		}
 	}
 
-	allRounds := append(newbieRounds, veteranRounds...)
+	allRounds := make([]logparser.RoundStats, 0, len(newbieRounds)+len(veteranRounds))
+	allRounds = append(allRounds, newbieRounds...)
+	allRounds = append(allRounds, veteranRounds...)
 
 	killEvents := []logparser.KillEvent{
 		{KillerSID: "[U:1:11111]", KillerName: "Newbie"},

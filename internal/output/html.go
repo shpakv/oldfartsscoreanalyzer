@@ -283,7 +283,7 @@ try {
 </script>
 </html>`
 
-	return os.WriteFile(path, []byte(htmlContent), 0644)
+	return os.WriteFile(path, []byte(htmlContent), 0600) // #nosec G306 - HTML output file permissions
 }
 
 // generateCSS возвращает CSS стили

@@ -51,14 +51,14 @@ func (r *RoundsTabComponent) GenerateJS(data *stats.StatsData) string {
 		// Формат: [U:1:26840160] -> 26840160
 		if len(event.KillerSID) > 6 {
 			var accountID int64
-			fmt.Sscanf(event.KillerSID[5:len(event.KillerSID)-1], "%d", &accountID)
+			_, _ = fmt.Sscanf(event.KillerSID[5:len(event.KillerSID)-1], "%d", &accountID)
 			if accountID > 0 {
 				playerMap[accountID] = event.KillerName
 			}
 		}
 		if len(event.VictimSID) > 6 {
 			var accountID int64
-			fmt.Sscanf(event.VictimSID[5:len(event.VictimSID)-1], "%d", &accountID)
+			_, _ = fmt.Sscanf(event.VictimSID[5:len(event.VictimSID)-1], "%d", &accountID)
 			if accountID > 0 {
 				playerMap[accountID] = event.VictimName
 			}
@@ -69,14 +69,14 @@ func (r *RoundsTabComponent) GenerateJS(data *stats.StatsData) string {
 	for _, event := range data.FlashEvents {
 		if len(event.FlasherSID) > 6 {
 			var accountID int64
-			fmt.Sscanf(event.FlasherSID[5:len(event.FlasherSID)-1], "%d", &accountID)
+			_, _ = fmt.Sscanf(event.FlasherSID[5:len(event.FlasherSID)-1], "%d", &accountID)
 			if accountID > 0 && playerMap[accountID] == "" {
 				playerMap[accountID] = event.FlasherName
 			}
 		}
 		if len(event.VictimSID) > 6 {
 			var accountID int64
-			fmt.Sscanf(event.VictimSID[5:len(event.VictimSID)-1], "%d", &accountID)
+			_, _ = fmt.Sscanf(event.VictimSID[5:len(event.VictimSID)-1], "%d", &accountID)
 			if accountID > 0 && playerMap[accountID] == "" {
 				playerMap[accountID] = event.VictimName
 			}
@@ -87,7 +87,7 @@ func (r *RoundsTabComponent) GenerateJS(data *stats.StatsData) string {
 	for _, event := range data.DefuseEvents {
 		if len(event.PlayerSID) > 6 {
 			var accountID int64
-			fmt.Sscanf(event.PlayerSID[5:len(event.PlayerSID)-1], "%d", &accountID)
+			_, _ = fmt.Sscanf(event.PlayerSID[5:len(event.PlayerSID)-1], "%d", &accountID)
 			if accountID > 0 && playerMap[accountID] == "" {
 				playerMap[accountID] = event.PlayerName
 			}

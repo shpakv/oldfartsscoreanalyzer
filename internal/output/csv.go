@@ -18,11 +18,13 @@ func NewCSVExporter() *CSVExporter {
 
 // WriteKillMatrix записывает матрицу убийств в CSV файл
 func (c *CSVExporter) WriteKillMatrix(path string, data *stats.StatsData) error {
-	f, err := os.Create(path)
+	f, err := os.Create(path) // #nosec G304 - path is controlled by user input for CSV export
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	w := csv.NewWriter(f)
 	defer w.Flush()

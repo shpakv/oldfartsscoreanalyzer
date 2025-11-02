@@ -107,11 +107,13 @@ func (p *Parser) parseFile(path string, result *ParseResult) error {
 
 // readLines читает все строки из файла
 func (p *Parser) readLines(path string) ([]string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 - path is controlled by user input for log parsing
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	var lines []string
 	scanner := bufio.NewScanner(f)
@@ -307,23 +309,24 @@ func (p *Parser) parseJSONBlockFromLines(lines []string, startIdx int, date stri
 		}
 		line = strings.TrimSpace(line)
 
-		if strings.HasPrefix(line, `"round_number"`) {
+		switch {
+		case strings.HasPrefix(line, `"round_number"`):
 			if val := extractQuotedValue(line); val != "" {
 				stats.RoundNumber, _ = strconv.Atoi(val)
 			}
-		} else if strings.HasPrefix(line, `"score_t"`) {
+		case strings.HasPrefix(line, `"score_t"`):
 			if val := extractQuotedValue(line); val != "" {
 				stats.ScoreT, _ = strconv.Atoi(val)
 			}
-		} else if strings.HasPrefix(line, `"score_ct"`) {
+		case strings.HasPrefix(line, `"score_ct"`):
 			if val := extractQuotedValue(line); val != "" {
 				stats.ScoreCT, _ = strconv.Atoi(val)
 			}
-		} else if strings.HasPrefix(line, `"map"`) {
+		case strings.HasPrefix(line, `"map"`):
 			stats.Map = extractQuotedValue(line)
-		} else if strings.HasPrefix(line, `"server"`) {
+		case strings.HasPrefix(line, `"server"`):
 			stats.Server = extractQuotedValue(line)
-		} else if strings.HasPrefix(line, `"player_`) {
+		case strings.HasPrefix(line, `"player_`):
 			// Парсим статистику игрока
 			playerStats := parsePlayerStats(line)
 			if playerStats != nil {
@@ -346,9 +349,10 @@ func calculateRoundRatings(round *RoundStats) {
 	ctCount := 0
 	tCount := 0
 	for _, p := range round.Players {
-		if p.Team == 3 {
+		switch p.Team {
+		case 3:
 			ctCount++
-		} else if p.Team == 2 {
+		case 2:
 			tCount++
 		}
 	}
@@ -361,14 +365,15 @@ func calculateRoundRatings(round *RoundStats) {
 		var oppCount, teamCount int
 		var win float64
 
-		if p.Team == 3 { // CT
+		switch p.Team {
+		case 3: // CT
 			oppCount = tCount
 			teamCount = ctCount
 			// Проверяем победу по полю Winner (будет проставлено позже)
 			if round.Winner == 3 {
 				win = 1.0
 			}
-		} else if p.Team == 2 { // T
+		case 2: // T
 			oppCount = ctCount
 			teamCount = tCount
 			// Проверяем победу по полю Winner (будет проставлено позже)
@@ -413,12 +418,13 @@ func calculateRoundRatings(round *RoundStats) {
 
 		// Бонус за многокиллы (процент убитых противников)
 		killRatio := kills / float64(oppCount)
-		var multiKillBonus float64 = 0
-		if killRatio >= 1.0 { // Убил всех противников (ACE)
+		var multiKillBonus float64
+		switch {
+		case killRatio >= 1.0: // Убил всех противников (ACE)
 			multiKillBonus = 0.3
-		} else if killRatio >= 0.8 { // Убил 80%+ противников (например, 4 из 5)
+		case killRatio >= 0.8: // Убил 80%+ противников (например, 4 из 5)
 			multiKillBonus = 0.2
-		} else if killRatio >= 0.6 { // Убил 60%+ противников (например, 3 из 5)
+		case killRatio >= 0.6: // Убил 60%+ противников (например, 3 из 5)
 			multiKillBonus = 0.1
 		}
 
