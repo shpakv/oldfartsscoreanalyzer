@@ -20,6 +20,10 @@ jobs:
         with:
           go-version: "1.23"
 
+      # Установка goimports
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
+
       # Проверка кода на форматирование (gofmt)
       - name: Check formatting
         run: |
@@ -31,11 +35,23 @@ jobs:
             exit 1
           fi
 
-      # Линтер (пример с golangci-lint, можно добавить и другие проверки)
+      # Проверка импортов (goimports)
+      - name: Check imports
+        run: |
+          UNFORMATTED=$(goimports -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "Файлы с неправильными импортами:"
+            echo "$UNFORMATTED"
+            echo "Пожалуйста, запустите 'goimports -w .' и закоммитьте изменения."
+            exit 1
+          fi
+
+      # Линтер (с явным указанием конфигурации)
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
+          args: --config=.golangci.yml --verbose
 
   # 2) Шаг Build
   build:
@@ -51,8 +67,11 @@ jobs:
         with:
           go-version: "1.23"
 
-      - name: Build application
-        run: echo "Nothing to build, WIP."
+      - name: Build CLI application
+        run: go build -o teambuilder ./cmd/teambuilder
+
+      - name: Build TUI application
+        run: go build -o teambuilder-tui ./cmd/teambuilder-tui
 
   # 3) Шаг Test
   test:

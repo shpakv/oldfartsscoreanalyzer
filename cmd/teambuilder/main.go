@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"oldfartscounter/internal/environment"
 	"oldfartscounter/internal/notifier"
 	"oldfartscounter/internal/teambuilder"
 	"oldfartscounter/internal/telegram"
@@ -12,14 +11,14 @@ import (
 	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
-var SorryBro = ""
+var SorryBro = "Mr. Titspervert"
 
 func main() {
 	c := config()
 	f := telegram.NewTeamTableFormatter()
 	notifiers := []notifier.Notifier{
 		notifier.NewConsoleNotifier(f),
-		telegram.NewNotifier(apiHandler(), f),
+		// telegram.NewNotifier(apiHandler(), f),
 	}
 	repo := teambuilder.NewPlayerRepository()
 	teamBuilder := teambuilder.NewTeamBuilder(repo)
@@ -58,8 +57,9 @@ func config() *teambuilder.TeamConfiguration {
 	return &c
 }
 
-func apiHandler() *telegram.DefaultAPIHandler {
-	bot := telegram.NewBotFromEnv()
-	chatId := environment.GetVariable("TELEGRAM_CHAT_ID", telegram.ChatID)
-	return telegram.NewDefaultAPIHandler(bot, chatId)
-}
+// apiHandler создает API handler для Telegram (закомментировано, но оставлено для будущего использования)
+// func apiHandler() *telegram.DefaultAPIHandler {
+// 	bot := telegram.NewBotFromEnv()
+// 	chatId := environment.GetVariable("TELEGRAM_CHAT_ID", telegram.ChatID)
+// 	return telegram.NewDefaultAPIHandler(bot, chatId)
+// }
