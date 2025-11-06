@@ -13,29 +13,83 @@ import (
 func updateResults(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.String() {
-		case "t", "е": // е - это t на русской раскладке
-			// Отправить в Telegram (немедленно)
-			sorryBroName := ""
-			if m.sorryBro != nil {
-				sorryBroName = *m.sorryBro
+		case "s", "ы": // ы - это s на русской раскладке
+			// Выбор SorryBro
+			selectedPlayers := m.getSelectedPlayersList()
+			if len(selectedPlayers) > 0 {
+				// Переключаемся в режим выбора SorryBro
+				m.cursor = 0
+				m.searchMode = true // Используем searchMode как флаг для режима выбора SorryBro
 			}
-
-			// Вызываем telegram notifier
-			if len(m.notifiers) > 0 {
-				if err := m.notifiers[0].Notify(m.generatedTeams, sorryBroName); err != nil {
-					m.errorMsg = fmt.Sprintf("Ошибка отправки в Telegram: %v", err)
-					return m, nil
+		case "up", "k", "л": // навигация в режиме выбора SorryBro
+			if m.searchMode { // searchMode используется для режима SorryBro
+				if m.cursor > 0 {
+					m.cursor--
 				}
 			}
+		case "down", "j", "о":
+			if m.searchMode {
+				selectedPlayers := m.getSelectedPlayersList()
+				if m.cursor < len(selectedPlayers) {
+					m.cursor++
+				}
+			}
+		case keyEnter:
+			if m.searchMode {
+				// Подтверждаем выбор SorryBro
+				selectedPlayers := m.getSelectedPlayersList()
+				if m.cursor < len(selectedPlayers) {
+					playerName := m.allPlayers[selectedPlayers[m.cursor]].NickName
+					m.sorryBro = &playerName
+					m.generateTeams() // Перегенерируем с новым SorryBro
+				} else if m.cursor == len(selectedPlayers) {
+					// Выбрали "Нет SorryBro"
+					m.sorryBro = nil
+					m.generateTeams()
+				}
+				m.searchMode = false
+				m.cursor = 0
+			}
+		case "t", "е": // е - это t на русской раскладке
+			if !m.searchMode {
+				// Отправить в Telegram (немедленно)
+				sorryBroName := ""
+				if m.sorryBro != nil {
+					sorryBroName = *m.sorryBro
+				}
 
-			m.errorMsg = "✅ Результаты отправлены в чат OldFarts"
+				// Очищаем предыдущие сообщения
+				m.errorMsg = ""
+				m.successMsg = ""
+
+				// Вызываем telegram notifier
+				if len(m.notifiers) > 0 {
+					if err := m.notifiers[0].Notify(m.generatedTeams, sorryBroName); err != nil {
+						m.errorMsg = fmt.Sprintf("Ошибка отправки в Telegram: %v", err)
+						return m, nil
+					}
+				}
+
+				m.successMsg = "Результаты отправлены в чат OldFarts"
+			}
 		case "r", "к": // к - это r на русской раскладке
-			// Перегенерировать команды
-			m.generateTeams()
+			if !m.searchMode {
+				// Очищаем сообщения
+				m.errorMsg = ""
+				m.successMsg = ""
+				// Перегенерировать команды
+				m.generateTeams()
+			}
 		case keyEsc:
-			// Возврат в меню
-			m.currentScreen = ScreenMenu
-			m.cursor = 0
+			if m.searchMode {
+				// Выход из режима выбора SorryBro
+				m.searchMode = false
+				m.cursor = 0
+			} else {
+				// Возврат в меню
+				m.currentScreen = ScreenMenu
+				m.cursor = 0
+			}
 		case "q", "й", keyCtrlC: // й - это q на русской раскладке
 			return m, tea.Quit
 		}
@@ -46,29 +100,31 @@ func updateResults(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 func viewResults(m Model) string {
 	var b strings.Builder
 
+	// Если в режиме выбора SorryBro - показываем UI выбора
+	if m.searchMode {
+		return viewSorryBroSelector(m)
+	}
+
 	// Заголовок
 	title := styles.TitleStyle.Render("Сгенерированные команды")
-	numTeamsText := fmt.Sprintf("%d команды", m.numTeams)
-	if m.numTeams == 4 {
-		numTeamsText = "4 команды"
+	subtitle := ""
+	if m.sorryBro != nil {
+		subtitle = styles.SubtitleStyle.Render(fmt.Sprintf("SorryBro: %s", *m.sorryBro))
+	} else {
+		subtitle = styles.SubtitleStyle.Render("SorryBro: не выбран")
 	}
-	subtitle := styles.SubtitleStyle.Render(numTeamsText)
 
 	b.WriteString("\n")
 	b.WriteString(lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(styles.ColorGrid).
 		Padding(1, 2).
-		Width(100).
+		Width(130).
 		Render(title + "\n" + subtitle))
 	b.WriteString("\n\n")
 
-	// Визуализация команд
-	if m.numTeams == 2 {
-		b.WriteString(renderTwoTeams(m))
-	} else {
-		b.WriteString(renderFourTeams(m))
-	}
+	// Визуализация команд (всегда 2)
+	b.WriteString(renderTwoTeams(m))
 
 	b.WriteString("\n\n")
 
@@ -76,15 +132,20 @@ func viewResults(m Model) string {
 	b.WriteString(renderBalance(m))
 	b.WriteString("\n\n")
 
-	// Ошибка, если есть
+	// Сообщения об ошибках и успехе
 	if m.errorMsg != "" {
 		errorBox := styles.ErrorStyle.Render("⚠ " + m.errorMsg)
 		b.WriteString(errorBox)
 		b.WriteString("\n\n")
 	}
+	if m.successMsg != "" {
+		successBox := styles.SuccessStyle.Render("✅ " + m.successMsg)
+		b.WriteString(successBox)
+		b.WriteString("\n\n")
+	}
 
 	// Помощь
-	help := styles.HelpStyle.Render("T: отправить в чат OldFarts • R: перегенерировать • Esc: в меню • Q: выход")
+	help := styles.HelpStyle.Render("S: выбрать SorryBro • T: отправить в чат OldFarts • R: перегенерировать • Esc: в меню • Q: выход")
 	b.WriteString(help)
 
 	return b.String()
@@ -98,7 +159,7 @@ func renderTwoTeams(m Model) string {
 	team1 := m.generatedTeams[0]
 	team2 := m.generatedTeams[1]
 
-	// Определяем максимальный рейтинг для градиента
+	// Определяем максимальный рейтинг для градиента и средний для категорий
 	maxRating := 0.0
 	for _, team := range m.generatedTeams {
 		for _, player := range team {
@@ -107,46 +168,19 @@ func renderTwoTeams(m Model) string {
 			}
 		}
 	}
+	averageMu := m.calculateAverageMu()
 
 	// Рендерим команду 1
-	team1Box := renderTeam(team1, "Команда 1", maxRating)
+	team1Box := renderTeam(team1, "Команда 1", maxRating, averageMu)
 
 	// Рендерим команду 2
-	team2Box := renderTeam(team2, "Команда 2", maxRating)
+	team2Box := renderTeam(team2, "Команда 2", maxRating, averageMu)
 
 	// Размещаем команды рядом
 	return lipgloss.JoinHorizontal(lipgloss.Top, team1Box, "  ", team2Box)
 }
 
-func renderFourTeams(m Model) string {
-	if len(m.generatedTeams) < 4 {
-		return styles.ErrorStyle.Render("Ошибка генерации команд")
-	}
-
-	// Определяем максимальный рейтинг для градиента
-	maxRating := 0.0
-	for _, team := range m.generatedTeams {
-		for _, player := range team {
-			if player.Score > maxRating {
-				maxRating = player.Score
-			}
-		}
-	}
-
-	// Рендерим команды
-	team1Box := renderTeam(m.generatedTeams[0], "Команда 1", maxRating)
-	team2Box := renderTeam(m.generatedTeams[1], "Команда 2", maxRating)
-	team3Box := renderTeam(m.generatedTeams[2], "Команда 3", maxRating)
-	team4Box := renderTeam(m.generatedTeams[3], "Команда 4", maxRating)
-
-	// Размещаем команды в 2 ряда по 2
-	row1 := lipgloss.JoinHorizontal(lipgloss.Top, team1Box, "  ", team2Box)
-	row2 := lipgloss.JoinHorizontal(lipgloss.Top, team3Box, "  ", team4Box)
-
-	return lipgloss.JoinVertical(lipgloss.Left, row1, "\n", row2)
-}
-
-func renderTeam(team teambuilder.Team, teamName string, maxRating float64) string {
+func renderTeam(team teambuilder.Team, teamName string, maxRating float64, averageMu float64) string {
 	var b strings.Builder
 
 	// Заголовок команды
@@ -156,10 +190,15 @@ func renderTeam(team teambuilder.Team, teamName string, maxRating float64) strin
 	// Игроки
 	for _, player := range team {
 		progressBar := styles.RenderProgressBar(player.Score, maxRating, 10)
-		line := fmt.Sprintf("%-25s %s %6.0f",
+
+		// Категория рейтинга (используем средний рейтинг)
+		category, categoryColor := styles.GetRatingCategory(player.Score, averageMu)
+		categoryStyle := lipgloss.NewStyle().Foreground(categoryColor).Bold(true)
+
+		line := fmt.Sprintf("%-25s %s %s",
 			player.NickName,
 			progressBar,
-			player.Score,
+			categoryStyle.Render(category),
 		)
 		b.WriteString(line)
 		b.WriteString("\n")
@@ -175,7 +214,7 @@ func renderTeam(team teambuilder.Team, teamName string, maxRating float64) strin
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(styles.ColorAccent).
 		Padding(1, 2).
-		Width(45).
+		Width(60).
 		Render(b.String())
 }
 
@@ -241,4 +280,75 @@ func renderBalance(m Model) string {
 		Padding(1, 2).
 		Width(100).
 		Render(result)
+}
+
+func viewSorryBroSelector(m Model) string {
+	var b strings.Builder
+
+	// Заголовок
+	title := styles.TitleStyle.Render("Выбор SorryBro")
+	subtitle := styles.SubtitleStyle.Render("Игрок, который останется за бортом")
+
+	b.WriteString("\n")
+	b.WriteString(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.ColorAccent).
+		Padding(1, 2).
+		Width(80).
+		Render(title + "\n" + subtitle))
+	b.WriteString("\n\n")
+
+	// Список игроков для выбора
+	selectedPlayers := m.getSelectedPlayersList()
+	playersList := ""
+
+	// Опция "Нет SorryBro"
+	cursor := " "
+	itemStyle := styles.UnselectedItemStyle
+	if m.cursor == len(selectedPlayers) {
+		cursor = keyCursor
+		itemStyle = styles.SelectedItemStyle
+	}
+	playersList += fmt.Sprintf("%s %s\n", cursor, itemStyle.Render("Нет SorryBro (все играют)"))
+	playersList += "\n"
+
+	// Список игроков
+	for i, playerIdx := range selectedPlayers {
+		player := m.allPlayers[playerIdx]
+
+		cursor = " "
+		itemStyle = styles.UnselectedItemStyle
+		if i == m.cursor {
+			cursor = keyCursor
+			itemStyle = styles.SelectedItemStyle
+		}
+
+		// Проверяем, не выбран ли уже этот игрок как SorryBro
+		isCurrentSorryBro := ""
+		if m.sorryBro != nil && *m.sorryBro == player.NickName {
+			isCurrentSorryBro = " ✓ текущий"
+		}
+
+		line := fmt.Sprintf("%s %-30s%s",
+			cursor,
+			itemStyle.Render(player.NickName),
+			isCurrentSorryBro,
+		)
+		playersList += line + "\n"
+	}
+
+	b.WriteString(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.ColorGrid).
+		Padding(1, 2).
+		Width(80).
+		Height(20).
+		Render(playersList))
+	b.WriteString("\n\n")
+
+	// Помощь
+	help := styles.HelpStyle.Render("↑/↓,K/J: навигация • Enter: выбрать • Esc: отмена")
+	b.WriteString(help)
+
+	return b.String()
 }

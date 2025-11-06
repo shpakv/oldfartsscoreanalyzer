@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"oldfartscounter/internal/environment"
@@ -14,11 +13,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func main() {
-	// Парсим флаги командной строки
-	configPath := flag.String("c", "bin/config.json5", "Путь к конфигурационному файлу")
-	flag.Parse()
+var SorryBro string
 
+func main() {
 	// Создаем репозиторий игроков
 	repo := teambuilder.NewPlayerRepository()
 
@@ -29,7 +26,10 @@ func main() {
 	}
 
 	// Создаем модель TUI
-	model := tui.NewModel(repo, *configPath, notifiers)
+	model := tui.NewModel(repo, notifiers)
+	if SorryBro != "" {
+		model.SetSorryBro(SorryBro)
+	}
 
 	// Запускаем Bubble Tea приложение
 	p := tea.NewProgram(model, tea.WithAltScreen())

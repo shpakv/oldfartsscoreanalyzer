@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"strings"
 
 	"oldfartscounter/internal/logparser"
 	"oldfartscounter/internal/output"
@@ -14,7 +13,6 @@ import (
 var (
 	dirFlag         = flag.String("dir", "logs", "Папка с логами (рекурсивно)")
 	extFlag         = flag.String("ext", "", "Фильтр по расширению (например, .log). Пусто = все файлы")
-	groupBy         = flag.String("by", "steamid", "Группировка игроков: name|steamid (по умолчанию steamid)")
 	outCSV          = flag.String("out", "", "Сохранить CSV для матрицы убийств (опционально)")
 	outHTML         = flag.String("html", "cs2_stats.html", "Путь к HTML (всегда пишется)")
 	highlightPlayer = flag.String("highlight", "maslina420", "Игрок для золотой подсветки в табе 'Сорян, Братан'")
@@ -35,8 +33,8 @@ func main() {
 		log.Fatalf("ошибка парсинга логов: %v", err)
 	}
 
-	// Обработка статистики
-	statsData := processor.Process(parseResult, *groupBy)
+	// Обработка статистики (всегда группируем по SteamID)
+	statsData := processor.Process(parseResult)
 	statsData.HighlightedPlayer = *highlightPlayer
 
 	// Экспорт CSV (опционально)
@@ -48,8 +46,7 @@ func main() {
 	}
 
 	// Генерация HTML
-	bySteamID := strings.ToLower(*groupBy) == "steamid"
-	if err = htmlGenerator.Generate(*outHTML, statsData, bySteamID); err != nil {
+	if err = htmlGenerator.Generate(*outHTML, statsData); err != nil {
 		log.Fatalf("ошибка записи HTML: %v", err)
 	}
 	fmt.Printf("HTML сохранён: %s\n", *outHTML)

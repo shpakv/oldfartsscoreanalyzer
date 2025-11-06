@@ -453,14 +453,10 @@ type ParseResult struct {
 	EndDate      string       // Конечная дата в формате DD-MM-YYYY
 }
 
-// KeyAndTitle возвращает ключ и заголовок для группировки игроков
-func KeyAndTitle(groupBy, name, sid string) (key, title string) {
-	switch strings.ToLower(groupBy) {
-	case "steamid":
-		return sid, name // ключуем по SID, подписываем ником
-	default:
-		return name, name
-	}
+// KeyAndTitle возвращает ключ и заголовок для группировки игроков.
+// Всегда группирует по SteamID, чтобы один игрок не дублировался при смене ника.
+func KeyAndTitle(name, sid string) (key, title string) {
+	return sid, name // ключуем по SID, подписываем последним ником
 }
 
 // extractQuotedValue извлекает значение из строки вида "key" : "value"

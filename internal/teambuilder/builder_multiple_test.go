@@ -34,6 +34,10 @@ func (m *mockRepository) GetTop(n int) []Player {
 	return []Player{}
 }
 
+func (m *mockRepository) GetAverageMu() float64 {
+	return 3.0 // Mock value for testing
+}
+
 func TestBuildMultiple_TwoTeams(t *testing.T) {
 	repo := &mockRepository{}
 	builder := NewTeamBuilder(repo)

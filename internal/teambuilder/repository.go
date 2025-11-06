@@ -13,11 +13,13 @@ type PlayerRepository interface {
 	GetAll() []Player
 	GetTop(n int) []Player
 	FindByName(nick string) *Player
+	GetAverageMu() float64 // Средний EPI (μ) для расчета категорий рейтинга
 }
 
 // singleton реализация
 type playerRepository struct {
-	data []Player
+	data      []Player
+	averageMu float64 // Средний EPI (μ) из логов для расчета категорий
 }
 
 var (
@@ -28,30 +30,31 @@ var (
 func NewPlayerRepository() PlayerRepository {
 	once.Do(func() {
 		instance = &playerRepository{
+			averageMu: 3.027, // Средний EPI (μ) из HTML (обновлено 2025-10-31)
 			data: []Player{
-				{NickName: "povidlo boy", Score: 4.675},
-				{NickName: "maslina420", Score: 4.276},
-				{NickName: "Looka", Score: 3.811},
-				{NickName: "Astracore", Score: 3.334},
-				{NickName: "C.C.Capwell", Score: 3.309},
-				{NickName: "jojo", Score: 3.238},
-				{NickName: "Pyatka", Score: 3.148},
-				{NickName: "d3msk", Score: 3.088},
-				{NickName: "Rezec", Score: 3.026},
-				{NickName: "whereispie", Score: 2.995},
-				{NickName: "Mr. Titspervert", Score: 2.989},
-				{NickName: "Fitz [BadCom]", Score: 2.876},
-				{NickName: "çruşş", Score: 2.785},
-				{NickName: "T1TAN", Score: 2.667},
-				{NickName: "Крыса Сплинтер", Score: 2.631},
-				{NickName: "Баба Валя", Score: 2.606},
-				{NickName: "Chu [BadCom]", Score: 2.578},
-				{NickName: "Boberto", Score: 2.570},
-				{NickName: "cyberhawk2000n", Score: 2.508},
-				{NickName: "petya_vpered", Score: 2.433},
-				{NickName: "Gharb", Score: 2.402},
-				{NickName: "Djafar-AGA", Score: 1.929},
-				{NickName: "atlas", Score: 1.655},
+				{NickName: "povidlo boy", Score: 4.561},
+				{NickName: "maslina420", Score: 4.260},
+				{NickName: "Looka", Score: 3.758},
+				{NickName: "C.C.Capwell", Score: 3.348},
+				{NickName: "Astracore", Score: 3.297},
+				{NickName: "jojo", Score: 3.194},
+				{NickName: "Pyatka", Score: 3.192},
+				{NickName: "whereispie", Score: 3.002},
+				{NickName: "d3msk", Score: 2.971},
+				{NickName: "Mr. Titspervert", Score: 2.917},
+				{NickName: "Fitz [BadCom]", Score: 2.838},
+				{NickName: "Rezec", Score: 2.812},
+				{NickName: "ℭŗυşş", Score: 2.772},
+				{NickName: "Крыса Сплинтер", Score: 2.589},
+				{NickName: "Баба Валя", Score: 2.515},
+				{NickName: "cyberhawk2000n", Score: 2.481},
+				{NickName: "petya_vpered", Score: 2.407},
+				{NickName: "Boberto", Score: 2.391},
+				{NickName: "Gharb", Score: 2.382},
+				{NickName: "T1TAN", Score: 2.221},
+				{NickName: "Chu [BadCom]", Score: 1.959},
+				{NickName: "Djafar-AGA", Score: 1.866},
+				{NickName: "atlas", Score: 1.632},
 
 				// Не играли по стате с сентября 2025.
 				{NickName: "BingoBongo", Score: 1.150},
@@ -87,4 +90,9 @@ func (r *playerRepository) FindByName(nick string) *Player {
 		}
 	}
 	return nil
+}
+
+// GetAverageMu — возвращает средний EPI (μ) для расчета категорий рейтинга
+func (r *playerRepository) GetAverageMu() float64 {
+	return r.averageMu
 }

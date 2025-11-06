@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"oldfartscounter/internal/tui/styles"
-	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -165,13 +164,14 @@ func viewPlayers(m Model) string {
 	filteredPlayers := m.getFilteredPlayers()
 	playersList := ""
 
-	// Определяем максимальный рейтинг для градиента
+	// Определяем максимальный рейтинг для градиента и средний для категорий
 	maxRating := 0.0
 	for _, player := range m.allPlayers {
 		if player.Score > maxRating {
 			maxRating = player.Score
 		}
 	}
+	averageMu := m.calculateAverageMu()
 
 	// Улучшенная логика скроллинга
 	const visibleLines = 15
@@ -225,15 +225,18 @@ func viewPlayers(m Model) string {
 		}
 
 		// Прогресс-бар рейтинга
-		progressBar := styles.RenderProgressBar(player.Score, maxRating, 10)
+		_ = styles.RenderProgressBar(player.Score, maxRating, 10)
+
+		// Категория рейтинга (используем средний рейтинг)
+		category, categoryColor := styles.GetRatingCategory(player.Score, averageMu)
+		categoryStyle := lipgloss.NewStyle().Foreground(categoryColor).Bold(true)
 
 		// Форматирование строки
-		line := fmt.Sprintf("%s %s %-25s %s %6.0f",
+		line := fmt.Sprintf("%s %s %-25s %s",
 			cursor,
 			checkStyle.Render(checkbox),
 			itemStyle.Render(player.NickName),
-			progressBar,
-			player.Score,
+			categoryStyle.Render(category),
 		)
 		playersList += line + "\n"
 	}
@@ -295,18 +298,4 @@ func (m Model) getFilteredPlayers() []filteredPlayer {
 		}
 	}
 	return filtered
-}
-
-// getSelectedPlayersList возвращает список выбранных игроков
-func (m Model) getSelectedPlayersList() []int {
-	var selected []int
-	for idx, isSelected := range m.selectedPlayers {
-		if isSelected {
-			selected = append(selected, idx)
-		}
-	}
-	// ВАЖНО: Сортируем, чтобы порядок был стабильным!
-	// Map в Go не гарантирует порядок итерации
-	sort.Ints(selected)
-	return selected
 }

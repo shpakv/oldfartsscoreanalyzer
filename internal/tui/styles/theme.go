@@ -114,31 +114,132 @@ var (
 			Bold(true)
 )
 
-// GetRatingColor возвращает цвет в зависимости от рейтинга (градиент как в HTML)
-func GetRatingColor(rating float64, maxRating float64) lipgloss.Color {
-	// Нормализуем рейтинг от 0 до 1
-	normalized := rating / maxRating
-	if normalized > 1.0 {
-		normalized = 1.0
+// Константы для категорий рейтинга
+const (
+	CategoryMonster = "Гиперебака"
+	CategoryGood    = "Ебака"
+	CategoryAverage = "Пердун"
+	CategoryWeak    = "Подпивас"
+)
+
+// hslToRGB конвертирует HSL в RGB
+func hslToRGB(h, s, l float64) (r, g, b uint8) {
+	hue2rgb := func(p, q, t float64) float64 {
+		if t < 0 {
+			t += 1
+		}
+		if t > 1 {
+			t -= 1
+		}
+		if t < 1.0/6.0 {
+			return p + (q-p)*6*t
+		}
+		if t < 1.0/2.0 {
+			return q
+		}
+		if t < 2.0/3.0 {
+			return p + (q-p)*(2.0/3.0-t)*6
+		}
+		return p
 	}
 
-	// Градиент от темно-фиолетового до красного (как в HTML)
-	// #2d1b4e -> #4b69ff -> #0ea5e9 -> #22c55e -> #cfb53b -> #f59e0b -> #ef4444
+	var rf, gf, bf float64
+	if s == 0 {
+		rf, gf, bf = l, l, l
+	} else {
+		var q float64
+		if l < 0.5 {
+			q = l * (1 + s)
+		} else {
+			q = l + s - l*s
+		}
+		p := 2*l - q
+		rf = hue2rgb(p, q, h+1.0/3.0)
+		gf = hue2rgb(p, q, h)
+		bf = hue2rgb(p, q, h-1.0/3.0)
+	}
+
+	r = uint8(rf * 255)
+	g = uint8(gf * 255)
+	b = uint8(bf * 255)
+	return r, g, b
+}
+
+// GetRatingColor возвращает цвет в зависимости от рейтинга (ТОЧНО как в HTML)
+// Формула: h=(220*(1-t))/360, s=0.85, l=0.16+0.39*t
+func GetRatingColor(rating float64, maxRating float64) lipgloss.Color {
+	if maxRating == 0 {
+		return lipgloss.Color("#0b1020")
+	}
+
+	// Нормализуем рейтинг от 0 до 1
+	t := rating / maxRating
+	if t > 1.0 {
+		t = 1.0
+	}
+	if t < 0 {
+		t = 0
+	}
+
+	// Точно та же формула что и в HTML:
+	// h = (220*(1-t))/360  -> от 220° (синий) до 0° (красный)
+	// s = 0.85             -> насыщенность 85%
+	// l = 0.16 + 0.39*t    -> яркость от 16% до 55%
+	h := (220 * (1 - t)) / 360.0
+	s := 0.85
+	l := 0.16 + 0.39*t
+
+	r, g, b := hslToRGB(h, s, l)
+	return lipgloss.Color(formatHex(r, g, b))
+}
+
+// formatHex форматирует RGB в hex строку
+func formatHex(r, g, b uint8) string {
+	return sprintf("#%02x%02x%02x", r, g, b)
+}
+
+func sprintf(format string, args ...interface{}) string {
+	// Простая реализация для hex формата
+	if format == "#%02x%02x%02x" && len(args) == 3 {
+		r, _ := args[0].(uint8)
+		g, _ := args[1].(uint8)
+		b, _ := args[2].(uint8)
+
+		hexChars := "0123456789abcdef"
+		result := "#"
+		result += string(hexChars[r>>4]) + string(hexChars[r&0x0f])
+		result += string(hexChars[g>>4]) + string(hexChars[g&0x0f])
+		result += string(hexChars[b>>4]) + string(hexChars[b&0x0f])
+		return result
+	}
+	return ""
+}
+
+// GetRatingCategory возвращает категорию рейтинга (как в HTML)
+// rating - это байесовский рейтинг (BayesianEPI) из логов или repository.go
+// averageMu - средний байесовский рейтинг (из repository.go или логов)
+// В TUI averageMu берется из среднего значения всех Score в repository.go
+func GetRatingCategory(rating float64, averageMu float64) (category string, color lipgloss.Color) {
+	// Используем те же пороги что и в HTML, но применяем к средней по всем игрокам
+	// Это позволяет категориям адаптироваться к текущему распределению рейтингов
+	mu := averageMu
+	if mu == 0 {
+		mu = 0.6 // Дефолтное значение, если averageMu не передан
+	}
+
+	weak := mu * 0.85    // Подпивас (Mil-Spec)
+	average := mu * 1.05 // Пердун (Restricted)
+	monster := mu * 1.25 // Гиперебака (Covert)
+
 	switch {
-	case normalized < 0.16:
-		return lipgloss.Color("#2d1b4e") // Темно-фиолетовый
-	case normalized < 0.33:
-		return lipgloss.Color("#4b69ff") // Синий
-	case normalized < 0.50:
-		return lipgloss.Color("#0ea5e9") // Голубой
-	case normalized < 0.66:
-		return lipgloss.Color("#22c55e") // Зеленый
-	case normalized < 0.83:
-		return lipgloss.Color("#cfb53b") // Желтый
-	case normalized < 0.95:
-		return lipgloss.Color("#f59e0b") // Оранжевый
+	case rating >= monster:
+		return CategoryMonster, lipgloss.Color("#cfb53b") // gold - Covert
+	case rating >= average:
+		return CategoryGood, lipgloss.Color("#ef4444") // red - Classified
+	case rating >= weak:
+		return CategoryAverage, lipgloss.Color("#4b69ff") // blue - Restricted
 	default:
-		return lipgloss.Color("#ef4444") // Красный
+		return CategoryWeak, lipgloss.Color("#9ca3af") // gray - Mil-Spec
 	}
 }
 

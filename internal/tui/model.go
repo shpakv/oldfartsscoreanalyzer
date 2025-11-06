@@ -14,7 +14,6 @@ const (
 	ScreenMenu Screen = iota
 	ScreenPlayers
 	ScreenConstraints
-	ScreenSettings
 	ScreenResults
 )
 
@@ -43,11 +42,10 @@ type Model struct {
 	// Constraints
 	constraints []teambuilder.Constraint
 
-	// Настройки
-	numTeams int     // 2 или 4
-	sorryBro *string // Игрок, который остается за бортом
+	// SorryBro - игрок, который остается за бортом
+	sorryBro *string
 
-	// Результаты генерации
+	// Результаты генерации (всегда 2 команды)
 	generatedTeams []teambuilder.Team
 
 	// Размеры окна
@@ -71,18 +69,17 @@ type Model struct {
 	// TeamBuilder
 	teamBuilder *teambuilder.TeamBuilder
 
-	// Путь к конфигурационному файлу
-	configPath string
-
 	// Notifier'ы для отправки результатов
 	notifiers []notifier.Notifier
 
 	// Ошибка для отображения
 	errorMsg string
+	// Успешное сообщение для отображения
+	successMsg string
 }
 
 // NewModel создает новую модель приложения
-func NewModel(repo teambuilder.PlayerRepository, configPath string, notifiers []notifier.Notifier) Model {
+func NewModel(repo teambuilder.PlayerRepository, notifiers []notifier.Notifier) Model {
 	// Загружаем всех доступных игроков из репозитория
 	allPlayers := loadAllPlayers(repo)
 
@@ -92,13 +89,11 @@ func NewModel(repo teambuilder.PlayerRepository, configPath string, notifiers []
 		allPlayers:      allPlayers,
 		selectedPlayers: make(map[int]bool),
 		constraints:     []teambuilder.Constraint{},
-		numTeams:        2,
 		sorryBro:        nil,
 		cursor:          0,
 		menuCursor:      0,
 		playerRepo:      repo,
 		teamBuilder:     teambuilder.NewTeamBuilder(repo),
-		configPath:      configPath,
 		notifiers:       notifiers,
 	}
 }
@@ -146,8 +141,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return updatePlayers(m, msg)
 	case ScreenConstraints:
 		return updateConstraints(m, msg)
-	case ScreenSettings:
-		return updateSettings(m, msg)
 	case ScreenResults:
 		return updateResults(m, msg)
 	}
@@ -164,10 +157,59 @@ func (m Model) View() string {
 		return viewPlayers(m)
 	case ScreenConstraints:
 		return viewConstraints(m)
-	case ScreenSettings:
-		return viewSettings(m)
 	case ScreenResults:
 		return viewResults(m)
 	}
 	return ""
+}
+
+// generateTeams генерирует 2 команды на основе текущей конфигурации
+func (m *Model) generateTeams() {
+	selectedPlayers := m.getSelectedPlayersList()
+
+	// Формируем конфигурацию
+	players := make([]teambuilder.TeamPlayer, 0, len(selectedPlayers))
+	for _, idx := range selectedPlayers {
+		players = append(players, m.allPlayers[idx])
+	}
+
+	m.config = &teambuilder.TeamConfiguration{
+		Players:     players,
+		Constraints: m.constraints,
+		NumTeams:    2, // Всегда 2 команды
+		SorryBro:    m.sorryBro,
+	}
+
+	// Генерируем команды
+	m.generatedTeams = m.teamBuilder.Build(m.config)
+}
+
+// getSelectedPlayersList возвращает список выбранных игроков (нужен для generateTeams)
+func (m Model) getSelectedPlayersList() []int {
+	var selected []int
+	for idx, isSelected := range m.selectedPlayers {
+		if isSelected {
+			selected = append(selected, idx)
+		}
+	}
+	// Сортируем для стабильного порядка
+	for i := 0; i < len(selected)-1; i++ {
+		for j := i + 1; j < len(selected); j++ {
+			if selected[i] > selected[j] {
+				selected[i], selected[j] = selected[j], selected[i]
+			}
+		}
+	}
+	return selected
+}
+
+// calculateAverageMu возвращает μ для расчета категорий рейтинга
+// μ берется из репозитория, который получает его из реальных логов или БД
+func (m Model) calculateAverageMu() float64 {
+	return m.playerRepo.GetAverageMu()
+}
+
+// SetSorryBro устанавливает SorryBro (например, из переменной окружения)
+func (m *Model) SetSorryBro(nickname string) {
+	m.sorryBro = &nickname
 }

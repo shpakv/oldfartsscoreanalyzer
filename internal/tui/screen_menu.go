@@ -17,7 +17,7 @@ func updateMenu(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.menuCursor > 0 {
 				m.menuCursor--
 			}
-		case "down", "j":
+		case keyDown, "j":
 			if m.menuCursor < 1 {
 				m.menuCursor++
 			}
@@ -27,8 +27,7 @@ func updateMenu(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentScreen = ScreenPlayers
 				m.selectedPlayers = make(map[int]bool)
 				m.constraints = []teambuilder.Constraint{}
-				m.numTeams = 2
-				m.sorryBro = nil
+				// Не сбрасываем sorryBro - сохраняем значение из build-time или предыдущего выбора
 				m.errorMsg = ""
 			case 1: // Выход
 				return m, tea.Quit

@@ -53,7 +53,7 @@ func getBuildVersion() string {
 }
 
 // Generate генерирует полный HTML файл
-func (h *HTMLGenerator) Generate(path string, data *stats.StatsData, bySteamID bool) error {
+func (h *HTMLGenerator) Generate(path string, data *stats.StatsData) error {
 	title := "Сколько пёрнул старый?"
 
 	// Создаем данные для JavaScript
@@ -365,41 +365,47 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 .header{padding:16px}
 h1{margin:0 0 6px;font-size:18px}
 .sub{color:var(--muted);margin:0 0 12px}
-.date-filter{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
-.date-filter label{color:var(--text);font-size:14px}
-.date-input{background:var(--panel);border:1px solid var(--grid);border-radius:8px;padding:6px 10px;color:var(--text);font-size:14px;outline:none;min-width:150px}
-.date-input:focus{border-color:var(--accent)}
-.date-input::-webkit-calendar-picker-indicator{filter:invert(0.7);cursor:pointer}
-.tabs{display:flex;gap:6px;padding:0 16px;overflow-x:auto}
-.tab-btn{background:transparent;border:1px solid var(--grid);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
-.tab-btn.active{border-color:var(--accent);color:#fff;background:#2a2440}
+.date-filter{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;background:rgba(43,43,43,0.6);padding:12px;border-radius:12px;border:1px solid rgba(124,92,255,0.15)}
+.date-filter label{color:var(--text);font-size:14px;font-weight:600}
+.date-input{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.2);border-radius:10px;padding:8px 12px;color:var(--text);font-size:14px;outline:none;min-width:150px;transition:all 0.2s ease;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2)}
+.date-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,0.2), inset 0 2px 4px rgba(0,0,0,0.2)}
+.date-input::-webkit-calendar-picker-indicator{filter:invert(0.7);cursor:pointer;transition:all 0.2s ease}
+.date-input::-webkit-calendar-picker-indicator:hover{filter:invert(1)}
+.tabs{display:flex;gap:8px;padding:0 16px;overflow-x:auto}
+.tab-btn{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.15);color:var(--text);padding:10px 18px;border-radius:12px;cursor:pointer;white-space:nowrap;transition:all 0.2s ease;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+.tab-btn:hover{border-color:rgba(124,92,255,0.4);transform:translateY(-1px);box-shadow:0 4px 8px rgba(0,0,0,0.3)}
+.tab-btn.active{border-color:var(--accent);color:#fff;background:linear-gradient(145deg, #3d2d5f 0%, #2a2440 100%);box-shadow:0 4px 12px rgba(124,92,255,0.4), inset 0 1px 2px rgba(255,255,255,0.1)}
 .view{display:none;padding:16px}
 .view.active{display:block}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0 14px}
-.toolbar input[type="search"]{background:var(--panel);border:1px solid var(--grid);border-radius:8px;padding:8px 10px;color:var(--text);min-width:240px;outline:none}
-.btn{background:var(--panel);border:1px solid var(--grid);border-radius:8px;padding:8px 12px;color:var(--text);cursor:pointer}
-.btn:hover{border-color:var(--accent);color:#fff}
-.select{background:var(--panel);border:1px solid var(--grid);border-radius:8px;padding:8px 10px;color:var(--text)}
-.table-wrap{position:relative;overflow:auto;border:1px solid var(--grid);border-radius:12px;background:var(--panel-2);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.toolbar input[type="search"]{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.2);border-radius:10px;padding:9px 14px;color:var(--text);min-width:240px;outline:none;transition:all 0.2s ease;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2)}
+.toolbar input[type="search"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,0.2), inset 0 2px 4px rgba(0,0,0,0.2)}
+.btn{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.2);border-radius:10px;padding:9px 16px;color:var(--text);cursor:pointer;transition:all 0.2s ease;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+.btn:hover{border-color:var(--accent);color:#fff;transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,92,255,0.3)}
+.btn:active{transform:translateY(0);box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+.select{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.2);border-radius:10px;padding:9px 14px;color:var(--text);transition:all 0.2s ease;box-shadow:0 2px 4px rgba(0,0,0,0.2);cursor:pointer}
+.select:hover{border-color:var(--accent)}
+.table-wrap{position:relative;overflow:auto;border:1px solid var(--grid);border-radius:16px;background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);box-shadow:0 8px 32px rgba(0,0,0,.5), 0 2px 8px rgba(124,92,255,0.1), inset 0 1px 0 rgba(255,255,255,0.05)}
 table{border-collapse:separate;border-spacing:0;min-width:max(900px, 100%)}
-th,td{padding:8px 10px;border-bottom:1px solid #1f1f1f;border-right:1px solid #1f1f1f;white-space:nowrap;text-align:center}
+th,td{padding:10px 12px;border-bottom:1px solid rgba(124,92,255,0.08);border-right:1px solid rgba(124,92,255,0.08);white-space:nowrap;text-align:center;transition:all 0.2s ease}
 th:last-child, td:last-child{border-right:none}
 tr:last-child td{border-bottom:none}
-thead th{position:sticky;top:0;background:var(--sticky);z-index:2;color:#e5e5e5;font-weight:600;font-size:12px}
-th.sticky-left, td.sticky-left{position:sticky;left:0;z-index:3;background:var(--sticky);text-align:right}
-.corner{z-index:4}
+thead th{position:sticky;top:0;background:linear-gradient(180deg, #2d2d2d 0%, #262626 100%);z-index:2;color:#e5e5e5;font-weight:700;font-size:13px;letter-spacing:0.3px;text-transform:uppercase;border-bottom:2px solid rgba(124,92,255,0.3);box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+th.sticky-left, td.sticky-left{position:sticky;left:0;z-index:3;background:linear-gradient(90deg, #2d2d2d 0%, #262626 100%);text-align:right;font-weight:600;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
+.corner{z-index:4;background:linear-gradient(135deg, #2d2d2d 0%, #262626 100%)}
 .sortable{cursor:pointer;position:relative;user-select:none}
-.sortable:hover{background:rgba(124,92,255,0.1)}
-.sortable::after{content:"⇅";margin-left:4px;opacity:0.5;font-size:10px}
-.sortable:hover::after{opacity:1;color:var(--accent)}
-.cell{transition:background-color .15s}
+.sortable:hover{background:linear-gradient(180deg, rgba(124,92,255,0.15) 0%, rgba(124,92,255,0.08) 100%);transform:translateY(-1px)}
+.sortable::after{content:"⇅";margin-left:4px;opacity:0.4;font-size:10px;transition:all 0.2s ease}
+.sortable:hover::after{opacity:1;color:var(--accent);transform:scale(1.2)}
+.cell{transition:all 0.2s ease;position:relative}
+.cell:hover{transform:scale(1.05);box-shadow:0 0 20px rgba(124,92,255,0.4), inset 0 0 20px rgba(255,255,255,0.1);z-index:1;border-radius:8px}
 .dragging{opacity:.6}
 th.sticky-left.sortable{cursor:move}
-th.sticky-left.sortable::after{content:"⇄";margin-left:4px;opacity:0.5;font-size:10px}
+th.sticky-left.sortable::after{content:"⇄";margin-left:4px;opacity:0.4;font-size:10px;transition:all 0.2s ease}
 td.sticky-left{cursor:move}
-td.sticky-left:hover{background:rgba(124,92,255,0.1)}
-.legend{display:flex;align-items:center;gap:8px;margin-left:auto}
-.swatch{width:120px;height:10px;background:linear-gradient(90deg,#0b1020,#1e3a8a,#0ea5e9,#22c55e,#fde047,#f59e0b,#ef4444);border-radius:4px}
+td.sticky-left:hover{background:linear-gradient(90deg, rgba(124,92,255,0.15) 0%, rgba(124,92,255,0.08) 100%)}
+.legend{display:flex;align-items:center;gap:12px;margin-left:auto;background:rgba(43,43,43,0.8);padding:8px 16px;border-radius:12px;backdrop-filter:blur(10px);border:1px solid rgba(124,92,255,0.2)}
+.swatch{width:140px;height:14px;background:linear-gradient(90deg,#0b1020,#1e3a8a,#0ea5e9,#22c55e,#fde047,#f59e0b,#ef4444);border-radius:7px;box-shadow:0 2px 8px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)}
 .small{font-size:12px;color:var(--muted)}
 .footer{opacity:.7;font-size:12px;margin:12px 16px 24px}
 
@@ -457,8 +463,19 @@ td.sticky-left:hover{background:rgba(124,92,255,0.1)}
 
 // generateCommonJS возвращает общие JavaScript функции
 func (h *HTMLGenerator) generateCommonJS() string {
-	return `function heatColor(v, max){ if(!max) return "#0b1020"; const t = v/max; const h=(220*(1-t))/360, s=0.85, l=0.16+0.39*t; return hslToHex(h,s,l); }
-function textColor(v, max){ const t = max? v/max : 0; return t<0.55 ? "#e5e5e5" : "#0b0b0b"; }
+	return `function heatColor(v, max){
+  if(!max) return "#0f172a";
+  const t = v/max;
+  if(t < 0.15) return "#0f172a";
+  if(t < 0.30) return "#1e3a8a";
+  if(t < 0.45) return "#1e40af";
+  if(t < 0.60) return "#0ea5e9";
+  if(t < 0.75) return "#22c55e";
+  if(t < 0.85) return "#fde047";
+  if(t < 0.95) return "#f59e0b";
+  return "#ef4444";
+}
+function textColor(v, max){ const t = max? v/max : 0; return t<0.60 ? "#f0f0f0" : "#0f0f0f"; }
 function hslToHex(h,s,l){
   const hue2rgb=(p,q,t)=>{ if(t<0) t+=1; if(t>1) t-=1;
     if(t<1/6) return p+(q-p)*6*t;

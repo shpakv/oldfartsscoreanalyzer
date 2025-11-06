@@ -16,8 +16,21 @@ func New() *Processor {
 	return &Processor{}
 }
 
-// Process обрабатывает результаты парсинга и возвращает статистические данные
-func (p *Processor) Process(parseResult *logparser.ParseResult, groupBy string) *StatsData {
+// isValidSteamID проверяет, является ли SteamID валидным.
+// Игнорируем STEAM_ID_PENDING, STEAM_ID_LAN, BOT, пустые значения и неправильный формат.
+// Валидный SteamID должен начинаться с "[U:1:" и иметь достаточную длину.
+func isValidSteamID(sid string) bool {
+	return sid != "" &&
+		len(sid) > 10 &&
+		strings.HasPrefix(sid, "[U:1:") &&
+		sid != "STEAM_ID_PENDING" &&
+		sid != "STEAM_ID_LAN" &&
+		!strings.Contains(sid, "BOT")
+}
+
+// Process обрабатывает результаты парсинга и возвращает статистические данные.
+// Всегда группирует игроков по SteamID, чтобы один игрок не дублировался при смене ника.
+func (p *Processor) Process(parseResult *logparser.ParseResult) *StatsData {
 	// Заполняем игроков
 	players := make(map[string]Player)
 
@@ -30,12 +43,15 @@ func (p *Processor) Process(parseResult *logparser.ParseResult, groupBy string) 
 
 	// Обрабатываем события убийств (всегда обновляем Title на последний)
 	for _, event := range sortedKillEvents {
-		kKey, kTitle := logparser.KeyAndTitle(groupBy, event.KillerName, event.KillerSID)
-		vKey, vTitle := logparser.KeyAndTitle(groupBy, event.VictimName, event.VictimSID)
+		// Игнорируем события с невалидными SteamID
+		if isValidSteamID(event.KillerSID) && isValidSteamID(event.VictimSID) {
+			kKey, kTitle := logparser.KeyAndTitle(event.KillerName, event.KillerSID)
+			vKey, vTitle := logparser.KeyAndTitle(event.VictimName, event.VictimSID)
 
-		// Всегда обновляем Title - так получим последний (актуальный) ник
-		players[kKey] = Player{Key: kKey, Title: kTitle}
-		players[vKey] = Player{Key: vKey, Title: vTitle}
+			// Всегда обновляем Title - так получим последний (актуальный) ник
+			players[kKey] = Player{Key: kKey, Title: kTitle}
+			players[vKey] = Player{Key: vKey, Title: vTitle}
+		}
 	}
 
 	// Сортируем события флешек по дате
@@ -47,12 +63,15 @@ func (p *Processor) Process(parseResult *logparser.ParseResult, groupBy string) 
 
 	// Обрабатываем события флешек (всегда обновляем Title на последний)
 	for _, event := range sortedFlashEvents {
-		fKey, fTitle := logparser.KeyAndTitle(groupBy, event.FlasherName, event.FlasherSID)
-		vKey, vTitle := logparser.KeyAndTitle(groupBy, event.VictimName, event.VictimSID)
+		// Игнорируем события с невалидными SteamID
+		if isValidSteamID(event.FlasherSID) && isValidSteamID(event.VictimSID) {
+			fKey, fTitle := logparser.KeyAndTitle(event.FlasherName, event.FlasherSID)
+			vKey, vTitle := logparser.KeyAndTitle(event.VictimName, event.VictimSID)
 
-		// Всегда обновляем Title - так получим последний (актуальный) ник
-		players[fKey] = Player{Key: fKey, Title: fTitle}
-		players[vKey] = Player{Key: vKey, Title: vTitle}
+			// Всегда обновляем Title - так получим последний (актуальный) ник
+			players[fKey] = Player{Key: fKey, Title: fTitle}
+			players[vKey] = Player{Key: vKey, Title: vTitle}
+		}
 	}
 
 	// Сортируем события дефьюза по дате
@@ -64,8 +83,11 @@ func (p *Processor) Process(parseResult *logparser.ParseResult, groupBy string) 
 
 	// Обрабатываем события дефьюза (всегда обновляем Title на последний)
 	for _, event := range sortedDefuseEvents {
-		pKey, pTitle := logparser.KeyAndTitle(groupBy, event.PlayerName, event.PlayerSID)
-		players[pKey] = Player{Key: pKey, Title: pTitle}
+		// Игнорируем события с невалидными SteamID
+		if isValidSteamID(event.PlayerSID) {
+			pKey, pTitle := logparser.KeyAndTitle(event.PlayerName, event.PlayerSID)
+			players[pKey] = Player{Key: pKey, Title: pTitle}
+		}
 	}
 
 	// Создаем упорядоченный список игроков
@@ -153,10 +175,10 @@ func (p *Processor) Process(parseResult *logparser.ParseResult, groupBy string) 
 	return &StatsData{
 		Players:            playerList,
 		Weapons:            weapons,
-		KillMatrix:         p.buildKillMatrix(parseResult.KillEvents, playerList, playerIndex, groupBy),
-		WeaponData:         p.buildWeaponData(parseResult.KillEvents, playerList, weapons, playerIndex, weaponIndex, groupBy),
-		FlashData:          p.buildFlashData(parseResult.FlashEvents, playerList, playerIndex, groupBy),
-		DefuseData:         p.buildDefuseData(parseResult.DefuseEvents, playerList, playerIndex, groupBy),
+		KillMatrix:         p.buildKillMatrix(parseResult.KillEvents, playerList, playerIndex),
+		WeaponData:         p.buildWeaponData(parseResult.KillEvents, playerList, weapons, playerIndex, weaponIndex),
+		FlashData:          p.buildFlashData(parseResult.FlashEvents, playerList, playerIndex),
+		DefuseData:         p.buildDefuseData(parseResult.DefuseEvents, playerList, playerIndex),
 		DateRange:          dateRange,
 		MinRoundsForRating: 100.0,     // Константа K для байесовского рейтинга
 		AverageMu:          averageMu, // Средний EPI всех игроков
@@ -173,7 +195,7 @@ func (p *Processor) Process(parseResult *logparser.ParseResult, groupBy string) 
 }
 
 // buildKillMatrix создает матрицу убийств
-func (p *Processor) buildKillMatrix(events []logparser.KillEvent, players []Player, playerIndex map[string]int, groupBy string) KillMatrix {
+func (p *Processor) buildKillMatrix(events []logparser.KillEvent, players []Player, playerIndex map[string]int) KillMatrix {
 	matrix := make([][]int, len(players))
 	for i := range matrix {
 		matrix[i] = make([]int, len(players))
@@ -181,8 +203,8 @@ func (p *Processor) buildKillMatrix(events []logparser.KillEvent, players []Play
 
 	maxKills := 0
 	for _, event := range events {
-		kKey, _ := logparser.KeyAndTitle(groupBy, event.KillerName, event.KillerSID)
-		vKey, _ := logparser.KeyAndTitle(groupBy, event.VictimName, event.VictimSID)
+		kKey, _ := logparser.KeyAndTitle(event.KillerName, event.KillerSID)
+		vKey, _ := logparser.KeyAndTitle(event.VictimName, event.VictimSID)
 
 		if kIdx, ok := playerIndex[kKey]; ok {
 			if vIdx, ok := playerIndex[vKey]; ok {
@@ -205,7 +227,7 @@ func (p *Processor) buildKillMatrix(events []logparser.KillEvent, players []Play
 }
 
 // buildWeaponData создает данные по оружию
-func (p *Processor) buildWeaponData(events []logparser.KillEvent, players []Player, weapons []string, playerIndex, weaponIndex map[string]int, groupBy string) WeaponData {
+func (p *Processor) buildWeaponData(events []logparser.KillEvent, players []Player, weapons []string, playerIndex, weaponIndex map[string]int) WeaponData {
 	killerWeaponMatrix := make([][]int, len(players))
 	victimWeaponMatrix := make([][]int, len(players))
 	for i := range killerWeaponMatrix {
@@ -220,8 +242,8 @@ func (p *Processor) buildWeaponData(events []logparser.KillEvent, players []Play
 			continue
 		}
 
-		kKey, _ := logparser.KeyAndTitle(groupBy, event.KillerName, event.KillerSID)
-		vKey, _ := logparser.KeyAndTitle(groupBy, event.VictimName, event.VictimSID)
+		kKey, _ := logparser.KeyAndTitle(event.KillerName, event.KillerSID)
+		vKey, _ := logparser.KeyAndTitle(event.VictimName, event.VictimSID)
 
 		if kIdx, ok := playerIndex[kKey]; ok {
 			if wIdx, ok := weaponIndex[event.Weapon]; ok {
@@ -262,7 +284,7 @@ func (p *Processor) buildWeaponData(events []logparser.KillEvent, players []Play
 }
 
 // buildFlashData создает данные по флешкам
-func (p *Processor) buildFlashData(events []logparser.FlashEvent, players []Player, playerIndex map[string]int, groupBy string) FlashData {
+func (p *Processor) buildFlashData(events []logparser.FlashEvent, players []Player, playerIndex map[string]int) FlashData {
 	countMatrix := make([][]int, len(players))
 	secondsMatrix := make([][]float64, len(players))
 	for i := range countMatrix {
@@ -274,8 +296,8 @@ func (p *Processor) buildFlashData(events []logparser.FlashEvent, players []Play
 	var secondsMax float64
 
 	for _, event := range events {
-		fKey, _ := logparser.KeyAndTitle(groupBy, event.FlasherName, event.FlasherSID)
-		vKey, _ := logparser.KeyAndTitle(groupBy, event.VictimName, event.VictimSID)
+		fKey, _ := logparser.KeyAndTitle(event.FlasherName, event.FlasherSID)
+		vKey, _ := logparser.KeyAndTitle(event.VictimName, event.VictimSID)
 
 		if fIdx, ok := playerIndex[fKey]; ok {
 			if vIdx, ok := playerIndex[vKey]; ok {
@@ -308,7 +330,7 @@ func (p *Processor) buildFlashData(events []logparser.FlashEvent, players []Play
 }
 
 // buildDefuseData создает данные по дефьюзу
-func (p *Processor) buildDefuseData(events []logparser.DefuseEvent, players []Player, playerIndex map[string]int, groupBy string) DefuseData {
+func (p *Processor) buildDefuseData(events []logparser.DefuseEvent, players []Player, playerIndex map[string]int) DefuseData {
 	attempts := make([]int, len(players))
 	withKit := make([]int, len(players))
 	withoutKit := make([]int, len(players))
@@ -325,7 +347,7 @@ func (p *Processor) buildDefuseData(events []logparser.DefuseEvent, players []Pl
 	for _, event := range events {
 		switch event.EventType {
 		case "begin":
-			pKey, _ := logparser.KeyAndTitle(groupBy, event.PlayerName, event.PlayerSID)
+			pKey, _ := logparser.KeyAndTitle(event.PlayerName, event.PlayerSID)
 			if pIdx, ok := playerIndex[pKey]; ok {
 				attempts[pIdx]++
 				if event.WithKit {
@@ -357,7 +379,7 @@ func (p *Processor) buildDefuseData(events []logparser.DefuseEvent, players []Pl
 			}
 
 		case "abandoned":
-			pKey, _ := logparser.KeyAndTitle(groupBy, event.PlayerName, event.PlayerSID)
+			pKey, _ := logparser.KeyAndTitle(event.PlayerName, event.PlayerSID)
 			if pIdx, ok := playerIndex[pKey]; ok {
 				abandoned[pIdx]++
 			}

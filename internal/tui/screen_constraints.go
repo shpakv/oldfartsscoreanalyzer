@@ -48,8 +48,9 @@ func updateConstraints(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case keyTab, keyEnter:
-			// Переход к настройкам
-			m.currentScreen = ScreenSettings
+			// Генерируем команды и переходим к результатам
+			m.generateTeams()
+			m.currentScreen = ScreenResults
 			m.cursor = 0
 		case keyEsc:
 			// Возврат к выбору игроков
@@ -252,7 +253,6 @@ func viewConstraintEditor(m Model) string {
 	player1Active := ""
 	if m.constraintFieldFocus == 0 {
 		player1Label = styles.AccentTextStyle.Render("► [1] Игрок 1:")
-		player1Active = " ◄ АКТИВНО"
 	}
 
 	player1Name := m.allPlayers[selectedPlayers[m.constraintPlayer1Idx]].NickName
@@ -276,7 +276,6 @@ func viewConstraintEditor(m Model) string {
 	player2Active := ""
 	if m.constraintFieldFocus == 1 {
 		player2Label = styles.AccentTextStyle.Render("► [2] Игрок 2:")
-		player2Active = " ◄ АКТИВНО"
 	}
 
 	player2Name := m.allPlayers[selectedPlayers[m.constraintPlayer2Idx]].NickName
@@ -303,9 +302,9 @@ func viewConstraintEditor(m Model) string {
 
 	typeText := ""
 	if m.constraintType == teambuilder.ConstraintTogether {
-		typeText = "● Вместе  ○ Раздельно"
+		typeText = "[X] Вместе [ ] Раздельно"
 	} else {
-		typeText = "○ Вместе  ● Раздельно"
+		typeText = "[ ] Вместе [X] Раздельно"
 	}
 
 	typeBox := fmt.Sprintf("%s %s", typeLabel, typeText)

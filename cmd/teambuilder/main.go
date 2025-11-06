@@ -11,7 +11,7 @@ import (
 	"github.com/yosuke-furukawa/json5/encoding/json5"
 )
 
-var SorryBro = "Mr. Titspervert"
+var SorryBro = ""
 
 func main() {
 	c := config()

@@ -11,9 +11,8 @@
 ###############################################################################
 
 build() {
-  local out=''
   local sorry_bro="${SORRY_BRO:-}"
-  local telegram_token="${TELEGRAM_TOKEN:-}"
+  local telegram_token="${TELEGRAM_BOT_TOKEN:-}"
   local ldflags=""
 
   # Build ldflags if variables are set
@@ -35,26 +34,57 @@ build() {
   _info "Building with:"
   _info "  SorryBro: ${sorry_bro:-<not set>}"
   _info "  Token: ${telegram_token:+<set>}${telegram_token:-<not set>}"
+  echo ""
 
-  # separate directories to search by spaces
+  # Find all main.go files (excluding buddy)
   find cmd -name main.go | grep -v buddy | while read -r file; do
-    out="$(
-      echo "$file" | \
-      sed -e 's/^cmd/bin/g' \
-          -e 's/\/cmd\//\/bin\//g' \
-          -e 's/main.go/oldfartbuilder/g'
-    )"
+    # Extract package name from directory (e.g., cmd/teambuilder/main.go -> teambuilder)
+    local pkg_name
+    pkg_name="$(basename "$(dirname "$file")")"
 
-    _info "Building $(basename "$(dirname "$file")")..."
+    # Extract base directory (e.g., cmd/logs/stats/main.go -> logs/stats)
+    local pkg_path
+    pkg_path="$(dirname "$file" | sed 's|^cmd/||')"
 
+    _info "Building ${pkg_name}..."
+
+    # Create output directory
+    local out_dir="bin/${pkg_path}"
+    mkdir -p "$out_dir"
+
+    # Build for current platform
+    local current_out="${out_dir}/${pkg_name}"
     if [ -n "$ldflags" ]; then
-      eval go build "$ldflags" -o "$out" "$file"
+      eval go build "$ldflags" -o "$current_out" "$file"
     else
-      go build -o "$out" "$file"
+      go build -o "$current_out" "$file"
     fi
+    _info "  ✓ Built: ${current_out} (current platform)"
 
-    _info "✓ Built: $out"
+    # Build for Linux (for AWS Lambda bootstrap)
+    local linux_out="${out_dir}/bootstrap"
+    if [ -n "$ldflags" ]; then
+      # Combine -s -w with custom ldflags
+      local linux_ldflags=$(echo "$ldflags" | sed 's|-ldflags="|-ldflags="-s -w|')
+      eval GOOS=linux GOARCH=amd64 go build "$linux_ldflags" -o "$linux_out" "$file"
+    else
+      GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "$linux_out" "$file"
+    fi
+    _info "  ✓ Built: ${linux_out} (linux/amd64 for Lambda)"
+
+    # Build for Windows
+    local windows_out="${out_dir}/${pkg_name}.exe"
+    if [ -n "$ldflags" ]; then
+      eval GOOS=windows GOARCH=amd64 go build "$ldflags" -o "$windows_out" "$file"
+    else
+      GOOS=windows GOARCH=amd64 go build -o "$windows_out" "$file"
+    fi
+    _info "  ✓ Built: ${windows_out} (windows/amd64)"
+
+    echo ""
   done
+
+  _info "✓ All builds completed successfully!"
 }
 
 terInit() {
