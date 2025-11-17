@@ -410,19 +410,19 @@ th,td{padding:10px 12px;border-bottom:1px solid rgba(124,92,255,0.08);border-rig
 th:last-child, td:last-child{border-right:none}
 tr:last-child td{border-bottom:none}
 thead th{position:sticky;top:0;background:linear-gradient(180deg, #2d2d2d 0%, #262626 100%);z-index:2;color:#e5e5e5;font-weight:700;font-size:13px;letter-spacing:0.3px;text-transform:uppercase;border-bottom:2px solid rgba(124,92,255,0.3);box-shadow:0 2px 8px rgba(0,0,0,0.3)}
-th.sticky-left, td.sticky-left{position:sticky;left:0;z-index:3;background:linear-gradient(90deg, #2d2d2d 0%, #262626 100%);text-align:right;font-weight:600;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
+th.sticky-left, td.sticky-left{position:sticky;left:0;z-index:3;background:linear-gradient(90deg, #2d2d2d 0%, #262626 100%);text-align:right;font-weight:600;box-shadow:2px 0 8px rgba(0,0,0,0.2);transform:translateZ(0);will-change:transform}
 .corner{z-index:4;background:linear-gradient(135deg, #2d2d2d 0%, #262626 100%)}
 .sortable{cursor:pointer;position:relative;user-select:none}
 .sortable:hover{background:linear-gradient(180deg, rgba(124,92,255,0.15) 0%, rgba(124,92,255,0.08) 100%);transform:translateY(-1px)}
 .sortable::after{content:"⇅";margin-left:4px;opacity:0.4;font-size:10px;transition:all 0.2s ease}
 .sortable:hover::after{opacity:1;color:var(--accent);transform:scale(1.2)}
 .cell{transition:all 0.2s ease;position:relative}
-.cell:hover{transform:scale(1.05);box-shadow:0 0 20px rgba(124,92,255,0.4), inset 0 0 20px rgba(255,255,255,0.1);z-index:1;border-radius:8px}
+.cell:hover:not(.sticky-left){background:rgba(124,92,255,0.15);box-shadow:0 0 10px rgba(124,92,255,0.3);border-radius:4px}
 .dragging{opacity:.6}
 th.sticky-left.sortable{cursor:move}
 th.sticky-left.sortable::after{content:"⇄";margin-left:4px;opacity:0.4;font-size:10px;transition:all 0.2s ease}
-td.sticky-left{cursor:move}
-td.sticky-left:hover{background:linear-gradient(90deg, rgba(124,92,255,0.15) 0%, rgba(124,92,255,0.08) 100%)}
+td.sticky-left,th.sticky-left{cursor:move}
+td.sticky-left:hover,th.sticky-left:hover,td.sticky-left.cell:hover{background:linear-gradient(90deg, #3d3d4d 0%, #36364d 100%)!important}
 .legend{display:flex;align-items:center;gap:12px;margin-left:auto;background:rgba(43,43,43,0.8);padding:8px 16px;border-radius:12px;backdrop-filter:blur(10px);border:1px solid rgba(124,92,255,0.2)}
 .swatch{width:140px;height:14px;background:linear-gradient(90deg,#0b1020,#1e3a8a,#0ea5e9,#22c55e,#fde047,#f59e0b,#ef4444);border-radius:7px;box-shadow:0 2px 8px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)}
 .small{font-size:12px;color:var(--muted)}
@@ -853,6 +853,16 @@ function renderMatrix(opts){
         th.style.color = "#fff";
       }
 
+      // Сохраняем оригинальный фон ПОСЛЕ всех условий и принудительно применяем непрозрачный при hover
+      const originalBg = th.style.background || 'linear-gradient(90deg, #2d2d2d 0%, #262626 100%)';
+      th.addEventListener("mouseenter", function() {
+        // Используем НЕПРОЗРАЧНЫЙ градиент на основе оригинального фона
+        this.style.background = 'linear-gradient(90deg, #3d3d4d 0%, #36364d 100%)';
+      });
+      th.addEventListener("mouseleave", function() {
+        this.style.background = originalBg;
+      });
+
       th.dataset.row = i;
       th.draggable = true;
       th.addEventListener("dragstart", dragStartRow);
@@ -863,9 +873,16 @@ function renderMatrix(opts){
       cols.forEach(j=>{
         const td = document.createElement("td"); td.className="cell";
         const v = (data[i] && data[i][j] != null) ? data[i][j] : 0;
-        td.textContent = numFmt ? numFmt(v) : String(v);
-        td.title = rowLabels[i] + " × " + colLabels[j] + " = " + (numFmt? numFmt(v) : String(v));
-        if(heatOn){
+
+        // Для диагонали (когда игрок пересекается с самим собой) показываем "---"
+        if (rowLabels[i] === colLabels[j]) {
+          td.textContent = "---";
+          td.title = rowLabels[i] + " (самопересечение)";
+        } else {
+          td.textContent = numFmt ? numFmt(v) : String(v);
+          td.title = rowLabels[i] + " × " + colLabels[j] + " = " + (numFmt? numFmt(v) : String(v));
+        }
+        if(heatOn && rowLabels[i] !== colLabels[j]){
           const mv = maxVal || 1;
           const vv = (typeof v==="number")? v : parseFloat(v)||0;
           td.style.background = heatColor(vv, mv);

@@ -66,7 +66,7 @@ window.flashTabState = (function() {
       let vIdx = playerIndexMap[e.VictimName];
       if (vIdx === undefined) vIdx = playerIndexMap[e.VictimSID];
 
-      if (fIdx !== undefined && vIdx !== undefined) {
+      if (fIdx !== undefined && vIdx !== undefined && fIdx !== vIdx) {
         secondsMatrix[fIdx][vIdx] += e.Duration || 0;
         if (secondsMatrix[fIdx][vIdx] > secondsMax) secondsMax = secondsMatrix[fIdx][vIdx];
       }
