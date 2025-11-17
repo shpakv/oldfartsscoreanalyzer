@@ -5,18 +5,26 @@ import (
 	"fmt"
 
 	"oldfartscounter/internal/stats"
+	"oldfartscounter/internal/tournament"
 )
 
 // TournamentTabComponent отвечает за таб "Турнир"
-type TournamentTabComponent struct{}
+type TournamentTabComponent struct {
+	config *tournament.Config
+}
 
 // NewTournamentTab создает новый компонент таба турнира
-func NewTournamentTab() *TournamentTabComponent {
-	return &TournamentTabComponent{}
+func NewTournamentTab(config *tournament.Config) *TournamentTabComponent {
+	return &TournamentTabComponent{
+		config: config,
+	}
 }
 
 // GenerateHTML генерирует HTML для таба турнира
 func (t *TournamentTabComponent) GenerateHTML() string {
+	// Форматируем дату
+	dateFormatted := t.formatDate(t.config.Date)
+
 	return `
 <!-- TOURNAMENT -->
 <div id="tab-tournament" class="view active">
@@ -169,8 +177,8 @@ func (t *TournamentTabComponent) GenerateHTML() string {
       </div>
       <div style="display:inline-block;background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:8px;padding:12px 24px;">
         <div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Дата проведения</div>
-        <div style="color:#ef4444;font-size:24px;font-weight:bold;">20 декабря 2025</div>
-        <div style="color:var(--muted);font-size:14px;margin-top:4px;">Время уточняется</div>
+        <div style="color:#ef4444;font-size:24px;font-weight:bold;">` + dateFormatted + `</div>
+        <div style="color:var(--muted);font-size:14px;margin-top:4px;">` + t.config.StartTime + `</div>
       </div>
     </div>
 
@@ -181,7 +189,7 @@ func (t *TournamentTabComponent) GenerateHTML() string {
       <div style="background:var(--panel);border:1px solid var(--grid);border-radius:12px;padding:20px;text-align:center;">
         <div style="font-size:32px;margin-bottom:8px;">⏱️</div>
         <div style="color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:6px;">Длительность</div>
-        <div style="color:var(--text);font-size:20px;font-weight:bold;">~4 часа</div>
+        <div style="color:var(--text);font-size:20px;font-weight:bold;">~` + fmt.Sprintf("%d", t.config.DurationHours) + ` часа</div>
       </div>
 
       <!-- Format Card -->
@@ -201,8 +209,8 @@ func (t *TournamentTabComponent) GenerateHTML() string {
       <div style="background:var(--panel);border:1px solid var(--grid);border-radius:12px;padding:20px;text-align:center;">
         <div style="font-size:32px;margin-bottom:8px;">👥</div>
         <div style="color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:6px;">Участники</div>
-        <div style="color:var(--text);font-size:20px;font-weight:bold;">20 игроков</div>
-        <div style="color:var(--muted);font-size:11px;margin-top:4px;">4 команды по 5</div>
+        <div style="color:var(--text);font-size:20px;font-weight:bold;">` + fmt.Sprintf("%d", len(t.config.Participants)) + ` игроков</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:4px;">` + fmt.Sprintf("%d команды по %d", t.config.Teams.Count, t.config.Teams.Size) + `</div>
       </div>
 
       <!-- Prizes Card -->
@@ -299,7 +307,7 @@ func (t *TournamentTabComponent) GenerateHTML() string {
       <div style="text-align:center;margin-bottom:25px;">
         <div style="font-size:40px;margin-bottom:10px;">👤</div>
         <h2 style="color:#8847ff;font-size:28px;margin:0 0 8px;text-transform:uppercase;letter-spacing:2px;">Участники</h2>
-        <div style="color:var(--muted);font-size:16px;">20 подтвержденных игроков (все места заняты)</div>
+        <div style="color:var(--muted);font-size:16px;">` + fmt.Sprintf("%d", len(t.config.Participants)) + ` подтвержденных игроков (все места заняты)</div>
       </div>
 
       <div id="participantsList"></div>
@@ -487,16 +495,7 @@ function toggleDetail(section) {
 
 // Christmas Snow Effect
 (function() {
-  // Check if decorations should be shown
-  const urlParams = new URLSearchParams(window.location.search);
-  const hasHnyParam = urlParams.has('hny');
-  const now = new Date();
-  const month = now.getMonth(); // 0-11 (0=January, 11=December)
-  const day = now.getDate();
-  const isHolidaySeason = (month === 11 && day >= 1) || (month === 0 && day <= 10);
-  const shouldShowDecorations = hasHnyParam || isHolidaySeason;
-
-  if (!shouldShowDecorations) {
+  if (!shouldShowHolidayDecorations()) {
     // Hide all Christmas decorations
     const christmasLights = document.querySelectorAll('.christmas-lights');
     christmasLights.forEach(el => el.style.display = 'none');
@@ -554,6 +553,7 @@ function toggleDetail(section) {
 // GenerateJS генерирует JavaScript для таба турнира
 func (t *TournamentTabComponent) GenerateJS(data *stats.StatsData) string {
 	jRatings, _ := json.Marshal(data.PlayerRatings)
+	jParticipants, _ := json.Marshal(t.config.Participants)
 	minRounds := data.MinRoundsForRating
 
 	return fmt.Sprintf(`
@@ -563,13 +563,8 @@ window.tournamentTabState = (function() {
   const MIN_ROUNDS = %v;
   const QUALIFICATION_DATE = new Date('2025-09-01');
 
-  // Список подтвержденных участников турнира (в порядке регистрации)
-  const confirmedParticipants = [
-    'Boberto', 'Баба Валя', 'C.C.Capwell', 'povidlo boy', 'Pyatka',
-    'maslina420', 'd3msk', 'cyberhawk2000n', 'Mr. Titspervert', 'Gharb',
-    'ℭŗυşş', 'jojo', 'Chu [BadCom]', 'petya_vpered', 'Looka',
-    'Rezec', 'Astracore', 'whereispie', 'Крыса Сплинтер', 'Djafar-AGA'
-  ];
+  // Список подтвержденных участников турнира (из конфига)
+  const confirmedParticipants = %s;
 
   // Дополнительные участники (лист ожидания) - для тестирования
   // Раскомментируй следующую строку для демонстрации системы приоритетов:
@@ -985,5 +980,35 @@ window.tournamentTabState = (function() {
 
 // Начальная отрисовка
 window.tournamentTabState.render();
-`, string(jRatings), minRounds)
+`, string(jRatings), minRounds, string(jParticipants))
+}
+
+// formatDate форматирует дату в читаемый вид
+func (t *TournamentTabComponent) formatDate(dateStr string) string {
+	// Форматируем дату из "2025-12-20" в "20 декабря 2025"
+	months := map[string]string{
+		"01": "января", "02": "февраля", "03": "марта", "04": "апреля",
+		"05": "мая", "06": "июня", "07": "июля", "08": "августа",
+		"09": "сентября", "10": "октября", "11": "ноября", "12": "декабря",
+	}
+
+	if len(dateStr) != 10 {
+		return dateStr
+	}
+
+	year := dateStr[0:4]
+	month := dateStr[5:7]
+	day := dateStr[8:10]
+
+	// Убираем ведущий ноль у дня
+	if day[0] == '0' {
+		day = day[1:]
+	}
+
+	monthName, ok := months[month]
+	if !ok {
+		return dateStr
+	}
+
+	return fmt.Sprintf("%s %s %s", day, monthName, year)
 }

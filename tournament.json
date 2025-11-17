@@ -1,0 +1,96 @@
+{
+  "name": "Old Farts Classic",
+  "date": "2025-12-20",
+  "duration_hours": 4,
+  "start_time": "TBD",
+  "participants": [
+    "Boberto",
+    "Баба Валя",
+    "C.C.Capwell",
+    "povidlo boy",
+    "Pyatka",
+    "maslina420",
+    "d3msk",
+    "cyberhawk2000n",
+    "Mr. Titspervert",
+    "Gharb",
+    "ℭŗυşş",
+    "jojo",
+    "Chu [BadCom]",
+    "petya_vpered",
+    "Looka",
+    "Rezec",
+    "Astracore",
+    "whereispie",
+    "Крыса Сплинтер",
+    "Djafar-AGA"
+  ],
+  "prizes": {
+    "1st_place": "TBD",
+    "2nd_place": "TBD",
+    "3rd_place": "TBD"
+  },
+  "program": {
+    "stage_1": {
+      "name": "Полуфиналы",
+      "format": "BO3",
+      "matches": [
+        {
+          "match": "Полуфинал 1",
+          "teams": ["Team 1", "Team 2"]
+        },
+        {
+          "match": "Полуфинал 2",
+          "teams": ["Team 3", "Team 4"]
+        }
+      ],
+      "note": "Играются параллельно"
+    },
+    "break": {
+      "duration_minutes": 10,
+      "purpose": "Выбор карт для этапа 2"
+    },
+    "stage_2": {
+      "name": "Финал и матч за 3 место",
+      "format": "BO3",
+      "matches": [
+        {
+          "match": "Финал",
+          "teams": ["Победитель полуфинала 1", "Победитель полуфинала 2"]
+        },
+        {
+          "match": "Матч за 3 место",
+          "teams": ["Проигравший полуфинала 1", "Проигравший полуфинала 2"]
+        }
+      ],
+      "note": "Играются параллельно"
+    }
+  },
+  "format": {
+    "type": "BO3",
+    "description": "Best of 3 - для победы нужно выиграть 2 карты",
+    "min_maps_per_team": 4,
+    "max_maps_per_team": 6
+  },
+  "maps": [
+    "de_ancient",
+    "de_anubis",
+    "de_dust2",
+    "de_inferno",
+    "de_mirage",
+    "de_nuke",
+    "de_overpass",
+    "de_train",
+    "de_vertigo"
+  ],
+  "teams": {
+    "count": 4,
+    "size": 5,
+    "names": ["Team 1", "Team 2", "Team 3", "Team 4"]
+  },
+  "organizers": {
+    "main": "Слава Шпак (Mr. Titspervert)",
+    "servers": "Женя Бондаренко (Bobo)",
+    "map_selection_moderator": "Андрей Хвостов (C.C.Capwell)"
+  }
+}

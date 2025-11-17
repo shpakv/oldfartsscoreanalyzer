@@ -3,6 +3,7 @@ package output
 import (
 	"encoding/json"
 	"html"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"oldfartscounter/internal/components"
 	"oldfartscounter/internal/stats"
+	"oldfartscounter/internal/tournament"
 )
 
 // HTMLGenerator отвечает за генерацию HTML
@@ -25,8 +27,24 @@ type HTMLGenerator struct {
 
 // NewHTMLGenerator создает новый генератор HTML
 func NewHTMLGenerator() *HTMLGenerator {
+	// Загружаем конфиг турнира
+	tournamentConfig, err := tournament.LoadConfig("tournament.json")
+	if err != nil {
+		log.Printf("Warning: Failed to load tournament config: %v. Using default values.", err)
+		// Создаем конфиг по умолчанию
+		tournamentConfig = &tournament.Config{
+			Name:          "Old Farts Classic",
+			Date:          "2025-12-20",
+			DurationHours: 4,
+			StartTime:     "Время уточняется",
+			Participants:  []string{},
+		}
+		tournamentConfig.Teams.Count = 4
+		tournamentConfig.Teams.Size = 5
+	}
+
 	return &HTMLGenerator{
-		tournamentTab:    components.NewTournamentTab(),
+		tournamentTab:    components.NewTournamentTab(tournamentConfig),
 		killsTab:         components.NewKillsTab(),
 		weaponsTab:       components.NewWeaponsTab(),
 		flashTab:         components.NewFlashTab(),
@@ -220,16 +238,7 @@ try {
 
 // Christmas Snow Effect
 (function() {
-  // Check if decorations should be shown
-  var urlParams = new URLSearchParams(window.location.search);
-  var hasHnyParam = urlParams.has('hny');
-  var now = new Date();
-  var month = now.getMonth(); // 0-11 (0=January, 11=December)
-  var day = now.getDate();
-  var isHolidaySeason = (month === 11 && day >= 1) || (month === 0 && day <= 10);
-  var shouldShowDecorations = hasHnyParam || isHolidaySeason;
-
-  if (!shouldShowDecorations) {
+  if (!shouldShowHolidayDecorations()) {
     // Hide all Christmas decorations
     var christmasLightsGlobal = document.querySelectorAll('.christmas-lights-global');
     christmasLightsGlobal.forEach(function(el) { el.style.display = 'none'; });
@@ -297,6 +306,17 @@ func (h *HTMLGenerator) generateCSS() string {
 body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Noto Sans',sans-serif;position:relative;overflow-x:hidden}
 
 /* Christmas Snow Animation */
+#snowflakes-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
 @keyframes snowfall {
   0% {
     transform: translateY(-10px) translateX(0);
@@ -309,13 +329,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 }
 
 .snowflake {
-  position: fixed;
+  position: absolute;
   top: -10px;
   color: white;
   font-size: 1em;
   opacity: 0.8;
   pointer-events: none;
-  z-index: 1;
   animation: snowfall linear infinite;
   text-shadow: 0 0 5px rgba(255,255,255,0.5);
 }
@@ -463,7 +482,20 @@ td.sticky-left:hover{background:linear-gradient(90deg, rgba(124,92,255,0.15) 0%,
 
 // generateCommonJS возвращает общие JavaScript функции
 func (h *HTMLGenerator) generateCommonJS() string {
-	return `function heatColor(v, max){
+	return `// Holiday decorations checker - single source of truth
+function shouldShowHolidayDecorations() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('hny')) return true;
+
+  const now = new Date();
+  const month = now.getMonth(); // 0-11 (0=January, 11=December)
+  const day = now.getDate();
+
+  // Show decorations from November 16 to January 10
+  return (month === 10 && day >= 16) || (month === 11) || (month === 0 && day <= 10);
+}
+
+function heatColor(v, max){
   if(!max) return "#0f172a";
   const t = v/max;
   if(t < 0.15) return "#0f172a";
@@ -1050,6 +1082,16 @@ function switchTab(tabId, updateHash) {
   }
 
   currentTab = tabId;
+
+  // Скрываем/показываем фильтр по датам в зависимости от таба
+  var dateFilterEl = document.querySelector('.date-filter');
+  if (dateFilterEl) {
+    if (tabId === 'tournament') {
+      dateFilterEl.style.display = 'none';
+    } else {
+      dateFilterEl.style.display = 'flex';
+    }
+  }
 
   btns.forEach(x=>x.classList.remove("active"));
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
