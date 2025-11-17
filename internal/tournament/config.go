@@ -66,7 +66,7 @@ type TeamConfig struct {
 
 // LoadConfig загружает конфигурацию турнира из JSON файла
 func LoadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is controlled by application code
 	if err != nil {
 		return nil, err
 	}
