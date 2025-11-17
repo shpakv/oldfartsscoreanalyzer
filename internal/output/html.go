@@ -152,7 +152,7 @@ document.getElementById('load-step-1').style.color = '#22c55e';
   <button class="tab-btn active" data-tab="tournament">🏆 Турнир</button>
   <button class="tab-btn" data-tab="kills">Сорян, братан</button>
   <button class="tab-btn" data-tab="player-ratings">Рейтинг игроков</button>
-  <button class="tab-btn" data-tab="tree">🌳 Древо Пердунов</button>
+  <button class="tab-btn" data-tab="tree">Древо Пердунов</button>
   <button class="tab-btn" data-tab="kw">Кто с чего убивает</button>
   <button class="tab-btn" data-tab="vw">Кого чем убивают</button>
   <button class="tab-btn" data-tab="flash">Индекс Пирога</button>
@@ -433,30 +433,30 @@ td.sticky-left:hover,th.sticky-left:hover,td.sticky-left.cell:hover{background:l
 .small{font-size:12px;color:var(--muted)}
 .footer{opacity:.7;font-size:12px;margin:12px 16px 24px}
 
-/* Tree Styles */
-.tree-root{display:flex;flex-direction:column;align-items:center;gap:60px}
-.tree-root-separator{width:2px;height:40px;background:linear-gradient(180deg, rgba(124,92,255,0.2) 0%, rgba(124,92,255,0.5) 50%, rgba(124,92,255,0.2) 100%);margin:0 auto}
-.tree-branch{display:flex;flex-direction:column;align-items:center;position:relative}
-.tree-node{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.3);border-radius:16px;padding:16px 20px;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.3), 0 0 40px rgba(124,92,255,0.1);transition:all 0.3s ease;position:relative;backdrop-filter:blur(10px)}
-.tree-node:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 60px rgba(124,92,255,0.2);border-color:rgba(124,92,255,0.6)}
+/* Tree Styles - Horizontal */
+.tree-root{display:flex;flex-direction:column;gap:20px;padding:20px}
+.tree-root-separator{height:2px;width:80%;background:linear-gradient(90deg, rgba(124,92,255,0.2) 0%, rgba(124,92,255,0.5) 50%, rgba(124,92,255,0.2) 100%);margin:20px 0}
+.tree-branch{display:flex;flex-direction:row;align-items:stretch;position:relative}
+.tree-node{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.3);border-radius:12px;padding:12px 16px;width:240px;box-shadow:0 4px 20px rgba(0,0,0,0.3), 0 0 40px rgba(124,92,255,0.1);transition:all 0.3s ease;position:relative;backdrop-filter:blur(10px);margin:8px 0}
+.tree-node:hover{transform:translateX(4px);box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 60px rgba(124,92,255,0.2);border-color:rgba(124,92,255,0.6)}
 .tree-node.root{border-color:rgba(124,92,255,0.6);box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 80px rgba(124,92,255,0.3);background:linear-gradient(145deg, #3d2d5f 0%, #2a2440 100%)}
-.tree-node.root::before{content:"👑";position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:24px;filter:drop-shadow(0 0 10px rgba(255,215,0,0.5))}
+.tree-node.root::before{content:"👑";position:absolute;top:50%;left:-35px;transform:translateY(-50%);font-size:22px;filter:drop-shadow(0 0 10px rgba(255,215,0,0.5))}
 .tree-node.inactive{opacity:0.5;border-color:rgba(100,100,100,0.3)}
 .tree-node.inactive .tree-node-avatar{background:linear-gradient(135deg, #444 0%, #333 100%)}
 .tree-node.inactive .tree-node-status{color:#666}
-.tree-node-content{display:flex;align-items:center;gap:14px}
-.tree-node-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg, rgba(124,92,255,0.8) 0%, rgba(168,85,247,0.8) 100%);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#fff;box-shadow:0 4px 12px rgba(124,92,255,0.4), inset 0 2px 4px rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.1)}
-.tree-node-info{flex:1;min-width:0}
-.tree-node-name{font-weight:700;font-size:15px;color:#e5e5e5;letter-spacing:0.3px;margin-bottom:4px}
-.tree-node-date{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px}
-.tree-node-date::before{content:"📅";font-size:10px}
-.tree-node-status{font-size:20px;color:#22c55e;filter:drop-shadow(0 0 8px currentColor)}
+.tree-node.excluded{border-color:rgba(239,68,68,0.5);background:linear-gradient(145deg, #2a2a2a 0%, #2a1f1f 100%)}
+.tree-node-content{display:flex;align-items:center;gap:12px}
+.tree-node-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg, rgba(124,92,255,0.8) 0%, rgba(168,85,247,0.8) 100%);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;box-shadow:0 4px 12px rgba(124,92,255,0.4), inset 0 2px 4px rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.1);flex-shrink:0}
+.tree-node-info{flex:1;min-width:0;overflow:hidden}
+.tree-node-name{font-weight:700;font-size:14px;color:#e5e5e5;letter-spacing:0.3px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-node-date{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.tree-node-date::before{content:"📅";font-size:9px}
+.tree-node-excluded{font-size:10px;color:#ef4444;font-weight:600;margin-top:4px;display:flex;align-items:center;gap:4px}
+.tree-node-status{font-size:18px;color:#22c55e;filter:drop-shadow(0 0 8px currentColor);flex-shrink:0}
 .tree-node.inactive .tree-node-status{color:#666;filter:none}
-.tree-children{display:flex;flex-direction:row;gap:40px;margin-top:40px;padding-top:40px;position:relative;flex-wrap:wrap;justify-content:center}
-.tree-children::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:40px;background:linear-gradient(180deg, rgba(124,92,255,0.5) 0%, rgba(124,92,255,0.2) 100%)}
-.tree-children .tree-branch::before{content:"";position:absolute;top:-40px;left:50%;width:2px;height:40px;background:linear-gradient(180deg, rgba(124,92,255,0.2) 0%, rgba(124,92,255,0.5) 100%)}
+.tree-children{display:flex;flex-direction:column;gap:0;margin-left:40px;padding-left:20px;position:relative;border-left:2px solid rgba(124,92,255,0.3)}
 .tree-children > .tree-branch{position:relative}
-.tree-children > .tree-branch:not(:first-child)::after{content:"";position:absolute;top:-40px;left:-20px;right:calc(100% + 20px);height:2px;background:linear-gradient(90deg, rgba(124,92,255,0.2) 0%, rgba(124,92,255,0.5) 50%, rgba(124,92,255,0.2) 100%)}
+.tree-children > .tree-branch::before{content:"";position:absolute;left:-20px;top:50%;width:20px;height:2px;background:linear-gradient(90deg, rgba(124,92,255,0.3) 0%, rgba(124,92,255,0.5) 100%)}
 
 /* Мобильная версия */
 @media (max-width: 768px) {
@@ -485,13 +485,15 @@ td.sticky-left:hover,th.sticky-left:hover,td.sticky-left.cell:hover{background:l
   .sortable::after{font-size:8px;margin-left:2px}
   th.sticky-left.sortable::after{font-size:8px;margin-left:2px}
   .footer{font-size:10px;margin:8px 12px 16px}
-  .tree-root{gap:40px}
-  .tree-children{gap:20px;flex-direction:column}
-  .tree-node{min-width:180px;padding:12px 16px}
+  .tree-root{gap:15px;padding:15px}
+  .tree-node{width:200px;padding:10px 12px;margin:6px 0}
   .tree-node-avatar{width:36px;height:36px;font-size:16px}
-  .tree-node-name{font-size:13px}
-  .tree-node-date{font-size:11px}
+  .tree-node-name{font-size:13px;margin-bottom:3px}
+  .tree-node-date{font-size:10px}
+  .tree-node-excluded{font-size:9px;margin-top:3px}
   .tree-node-status{font-size:16px}
+  .tree-children{margin-left:30px;padding-left:15px}
+  .tree-children > .tree-branch::before{width:15px;left:-15px}
 }
 
 /* Очень маленькие экраны */

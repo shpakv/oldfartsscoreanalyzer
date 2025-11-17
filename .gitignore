@@ -1,6 +1,9 @@
 score.go
 cs2_stats.html
 
+# Inputs
+members.csv
+
 .tmp
 tmp
 bin
