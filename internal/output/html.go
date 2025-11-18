@@ -24,6 +24,7 @@ type HTMLGenerator struct {
 	roundsTab        *components.RoundsTabComponent
 	playerRatingsTab *components.PlayerRatingsTabComponent
 	treeTab          *components.TreeTabComponent
+	progressTab      *components.ProgressTabComponent
 }
 
 // NewHTMLGenerator создает новый генератор HTML
@@ -53,6 +54,7 @@ func NewHTMLGenerator() *HTMLGenerator {
 		roundsTab:        components.NewRoundsTab(),
 		playerRatingsTab: components.NewPlayerRatingsTab(),
 		treeTab:          components.NewTreeTab(),
+		progressTab:      components.NewProgressTab(),
 	}
 }
 
@@ -102,6 +104,7 @@ func (h *HTMLGenerator) Generate(path string, data *stats.StatsData) error {
 <title>` + html.EscapeString(title) + `</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/png" href="favicon.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 ` + h.generateCSS() + `
 
 <!-- Christmas Decorations -->
@@ -152,6 +155,7 @@ document.getElementById('load-step-1').style.color = '#22c55e';
   <button class="tab-btn active" data-tab="tournament">🏆 Турнир</button>
   <button class="tab-btn" data-tab="kills">Сорян, братан</button>
   <button class="tab-btn" data-tab="player-ratings">Рейтинг игроков</button>
+  <button class="tab-btn" data-tab="progress">Прогресс игроков</button>
   <button class="tab-btn" data-tab="tree">Древо Пердунов</button>
   <button class="tab-btn" data-tab="kw">Кто с чего убивает</button>
   <button class="tab-btn" data-tab="vw">Кого чем убивают</button>
@@ -166,6 +170,7 @@ document.getElementById('load-step-1').style.color = '#22c55e';
 ` + h.weaponsTab.GenerateVictimWeaponHTML(data) + `
 ` + h.flashTab.GenerateHTML(data) + `
 ` + h.playerRatingsTab.GenerateHTML() + `
+` + h.progressTab.GenerateHTML() + `
 ` + h.roundsTab.GenerateHTML() + `
 ` + h.defuseTab.GenerateHTML(data) + `
 ` + h.treeTab.GenerateHTML() + `
@@ -218,6 +223,7 @@ try {
 ` + h.weaponsTab.GenerateVictimWeaponJS(data) + `
 ` + h.flashTab.GenerateJS(data) + `
 ` + h.playerRatingsTab.GenerateJS(data) + `
+` + h.progressTab.GenerateJS(data) + `
 ` + h.roundsTab.GenerateJS(data) + `
 ` + h.defuseTab.GenerateJS(data) + `
 ` + h.treeTab.GenerateJS() + `
