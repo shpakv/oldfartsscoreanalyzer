@@ -1082,6 +1082,7 @@ const tabHashMap = {
   'vw': 'victim-weapon',
   'flash': 'whereispie',
   'player-ratings': 'ratings',
+  'progress': 'progress',
   'rounds': 'games',
   'defuse': 'defuse',
   'tree': 'tree'
