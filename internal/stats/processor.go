@@ -443,7 +443,7 @@ func transposeMatrix(matrix [][]int) [][]int {
 }
 
 // buildPlayerRatings строит агрегированные рейтинги игроков
-func (p *Processor) buildPlayerRatings(roundStats []logparser.RoundStats, killEvents []logparser.KillEvent, flashEvents []logparser.FlashEvent, defuseEvents []logparser.DefuseEvent) []PlayerRating {
+func (p *Processor) buildPlayerRatings(roundStats []logparser.RoundStats, killEvents []logparser.KillEvent, flashEvents []logparser.FlashEvent, _ []logparser.DefuseEvent) []PlayerRating {
 	// Константы для байесовского рейтинга
 	const K = 100.0 // Минимальное количество раундов для "достоверности"
 

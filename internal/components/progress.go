@@ -1239,9 +1239,10 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 			mapStat.TotalRounds++
 
 			// Подсчет побед T и CT
-			if round.Winner == 2 {
+			switch round.Winner {
+			case 2:
 				mapStat.TWins++
-			} else if round.Winner == 3 {
+			case 3:
 				mapStat.CTWins++
 			}
 
@@ -1261,7 +1262,8 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 				tvs := tvsctMap[player.AccountID]
 				tvs.TotalRounds++
 
-				if player.Team == 2 { // T side
+				switch player.Team {
+				case 2: // T side
 					tvs.TStats.RoundsPlayed++
 					tvs.TStats.Kills += player.Kills
 					tvs.TStats.Deaths += player.Deaths
@@ -1270,7 +1272,7 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 					if round.Winner == 2 {
 						tvs.TStats.WinRounds++
 					}
-				} else if player.Team == 3 { // CT side
+				case 3: // CT side
 					tvs.CTStats.RoundsPlayed++
 					tvs.CTStats.Kills += player.Kills
 					tvs.CTStats.Deaths += player.Deaths
@@ -1329,11 +1331,12 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 
 		// Определяем предпочтительную сторону
 		tvs.KDDiff = tvs.TStats.KD - tvs.CTStats.KD
-		if tvs.TStats.RoundsPlayed > int(float64(tvs.CTStats.RoundsPlayed)*1.2) {
+		switch {
+		case tvs.TStats.RoundsPlayed > int(float64(tvs.CTStats.RoundsPlayed)*1.2):
 			tvs.PreferredSide = "T"
-		} else if tvs.CTStats.RoundsPlayed > int(float64(tvs.TStats.RoundsPlayed)*1.2) {
+		case tvs.CTStats.RoundsPlayed > int(float64(tvs.TStats.RoundsPlayed)*1.2):
 			tvs.PreferredSide = "CT"
-		} else {
+		default:
 			tvs.PreferredSide = "Balanced"
 		}
 
