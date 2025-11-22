@@ -109,7 +109,9 @@ func (t *TreeTabComponent) loadTreeData() (map[string]*TreeNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close() // #nosec G104 -- defer close is intentional
+	}()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()
@@ -270,26 +272,27 @@ func (t *TreeTabComponent) renderNode(sb *strings.Builder, node *TreeNode, isRoo
 	if isRoot {
 		rootClass = " root"
 	}
-	sb.WriteString(fmt.Sprintf(`<div class="tree-node %s%s" data-telegram="%s">`, statusClass, rootClass, telegram))
+	fmt.Fprintf(sb, `<div class="tree-node %s%s" data-telegram="%s">`, statusClass, rootClass, telegram)
 	sb.WriteString(`<div class="tree-node-content">`)
 
 	// Аватар (первая буква ника или telegram)
 	avatar := "?"
 	// Специальный случай для Mr. Titspervert
-	if node.Telegram == "@shpak_vv" || telegram == "shpak_vv" {
+	switch {
+	case node.Telegram == "@shpak_vv" || telegram == "shpak_vv":
 		avatar = "🖤"
-	} else if node.Nickname != "" {
+	case node.Nickname != "":
 		avatar = strings.ToUpper(string([]rune(node.Nickname)[0]))
-	} else if len(telegram) > 0 {
+	case len(telegram) > 0:
 		avatar = strings.ToUpper(string(telegram[0]))
 	}
-	sb.WriteString(fmt.Sprintf(`<div class="tree-node-avatar">%s</div>`, avatar))
+	fmt.Fprintf(sb, `<div class="tree-node-avatar">%s</div>`, avatar)
 
 	// Информация
 	sb.WriteString(`<div class="tree-node-info">`)
-	sb.WriteString(fmt.Sprintf(`<div class="tree-node-name">%s</div>`, displayName))
+	fmt.Fprintf(sb, `<div class="tree-node-name">%s</div>`, displayName)
 	if dateStr != "" {
-		sb.WriteString(fmt.Sprintf(`<div class="tree-node-date">%s</div>`, dateStr))
+		fmt.Fprintf(sb, `<div class="tree-node-date">%s</div>`, dateStr)
 	}
 
 	// Если участник исключен, показываем дату исключения
@@ -298,13 +301,13 @@ func (t *TreeTabComponent) renderNode(sb *strings.Builder, node *TreeNode, isRoo
 		if parsedDate, err := time.Parse("1/2/2006", node.DateExcluded); err == nil {
 			excludedDateStr = parsedDate.Format("02.01.2006")
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="tree-node-excluded">❌ Исключен: %s</div>`, excludedDateStr))
+		fmt.Fprintf(sb, `<div class="tree-node-excluded">❌ Исключен: %s</div>`, excludedDateStr)
 	}
 	sb.WriteString(`</div>`)
 
 	// Статус индикатор
 	statusIcon := "●"
-	sb.WriteString(fmt.Sprintf(`<div class="tree-node-status">%s</div>`, statusIcon))
+	fmt.Fprintf(sb, `<div class="tree-node-status">%s</div>`, statusIcon)
 
 	sb.WriteString(`</div>`) // tree-node-content
 	sb.WriteString(`</div>`) // tree-node

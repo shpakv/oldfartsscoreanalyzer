@@ -209,7 +209,7 @@ func (p *ProgressTabComponent) GenerateHTML() string {
   <!-- Статистика конкретного игрока -->
   <div id="playerStats" style="display:none;padding:20px;">
     <!-- Карточка с общей статистикой -->
-    <div style="background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);padding:24px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.2);">
+    <div style="background:linear-gradient(135deg, #1a1a2e 0%%, #16213e 100%%);padding:24px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.2);">
       <h3 style="margin:0 0 16px;color:#7c5cff;font-size:18px;">📊 Общая статистика</h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;">
         <div style="text-align:center;">
@@ -490,7 +490,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
       const winRateColor = pair.win_rate >= 60 ? '#22c55e' : pair.win_rate >= 50 ? '#fde047' : '#ef4444';
 
-      html += '<div style="padding:16px;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);border-radius:8px;border:1px solid rgba(124,92,255,0.2);">' +
+      html += '<div style="padding:16px;background:linear-gradient(135deg, #1a1a2e 0%%, #16213e 100%%);border-radius:8px;border:1px solid rgba(124,92,255,0.2);">' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
           '<span style="font-size:20px;">' + medal + '</span>' +
           '<div style="flex:1;">' +
@@ -521,7 +521,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
       return;
     }
 
-    let html = '<table style="width:100%;"><thead><tr><th>Партнер</th><th>Раундов</th><th>Win Rate</th><th>K/D</th></tr></thead><tbody>';
+    let html = '<table style="width:100%%;"><thead><tr><th>Партнер</th><th>Раундов</th><th>Win Rate</th><th>K/D</th></tr></thead><tbody>';
     player.top_partners.forEach(pair => {
       const partner = pair.player1 === player.name ? pair.player2 : pair.player1;
       const winRateColor = pair.win_rate >= 60 ? '#22c55e' : pair.win_rate >= 50 ? '#fde047' : '#ef4444';
@@ -545,7 +545,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
 
     let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">';
     data.map_stats.forEach(mapStat => {
-      html += '<div style="padding:20px;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);border-radius:8px;border:1px solid rgba(124,92,255,0.2);">' +
+      html += '<div style="padding:20px;background:linear-gradient(135deg, #1a1a2e 0%%, #16213e 100%%);border-radius:8px;border:1px solid rgba(124,92,255,0.2);">' +
         '<div style="font-size:16px;font-weight:bold;color:#e5e5e5;margin-bottom:12px;text-align:center;">' + mapStat.map_name + '</div>' +
         '<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">' + mapStat.total_rounds + ' раундов</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
@@ -571,7 +571,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
       return;
     }
 
-    let html = '<table style="width:100%;"><thead><tr>' +
+    let html = '<table style="width:100%%;"><thead><tr>' +
       '<th>Игрок</th>' +
       '<th style="color:#f59e0b;">T Раундов</th>' +
       '<th style="color:#f59e0b;">T K/D</th>' +
@@ -608,7 +608,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
       return;
     }
 
-    let html = '<table style="width:100%;"><thead><tr>' +
+    let html = '<table style="width:100%%;"><thead><tr>' +
       '<th>Карта</th>' +
       '<th>Раундов</th>' +
       '<th>K/D</th>' +
@@ -646,7 +646,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
     // T side
     const tKDColor = tvs.t_stats.kd >= 1 ? '#22c55e' : '#ef4444';
     const tWRColor = tvs.t_stats.win_rate >= 50 ? '#22c55e' : '#ef4444';
-    html += '<div style="padding:20px;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);border-radius:8px;border:1px solid rgba(245,158,11,0.3);">' +
+    html += '<div style="padding:20px;background:linear-gradient(135deg, #1a1a2e 0%%, #16213e 100%%);border-radius:8px;border:1px solid rgba(245,158,11,0.3);">' +
       '<div style="font-size:18px;font-weight:bold;color:#f59e0b;margin-bottom:16px;text-align:center;">Terrorists</div>' +
       '<div style="display:grid;gap:12px;">' +
         '<div style="display:flex;justify-content:space-between;">' +
@@ -671,7 +671,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
     // CT side
     const ctKDColor = tvs.ct_stats.kd >= 1 ? '#22c55e' : '#ef4444';
     const ctWRColor = tvs.ct_stats.win_rate >= 50 ? '#22c55e' : '#ef4444';
-    html += '<div style="padding:20px;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);border-radius:8px;border:1px solid rgba(59,130,246,0.3);">' +
+    html += '<div style="padding:20px;background:linear-gradient(135deg, #1a1a2e 0%%, #16213e 100%%);border-radius:8px;border:1px solid rgba(59,130,246,0.3);">' +
       '<div style="font-size:18px;font-weight:bold;color:#3b82f6;margin-bottom:16px;text-align:center;">Counter-Terrorists</div>' +
       '<div style="display:grid;gap:12px;">' +
         '<div style="display:flex;justify-content:space-between;">' +
