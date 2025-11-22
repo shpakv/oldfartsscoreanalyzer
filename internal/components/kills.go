@@ -35,7 +35,7 @@ func (k *KillsTabComponent) GenerateHTML(data *stats.StatsData) string {
 
       <!-- Специальная цель (серебро) -->
       <div style="background:linear-gradient(135deg, rgba(192,192,192,0.15) 0%%, rgba(192,192,192,0.05) 100%%);border:2px solid #c0c0c0;border-radius:12px;padding:24px;">
-        <div style="font-size:24px;font-weight:bold;color:#c0c0c0;">🥈 Boberto</div>
+        <div style="font-size:24px;font-weight:bold;color:#c0c0c0;">🥈 Ai, Bobo!</div>
         <div style="font-size:12px;color:var(--muted);margin-top:4px;">Ноябрь 2025 — Спец. цель</div>
       </div>
     </div>
@@ -94,7 +94,7 @@ window.killsTabState = (function() {
   const playerMappings = %s;
   const playerTitles = playerMappings.map(p => p.Title);
   const highlightedPlayer = %s;
-  const secondaryTarget = "Boberto"; // Специальная цель (серебро)
+  const secondaryTarget = "Ai, Bobo!"; // Специальная цель (серебро)
 
   // Создаем индекс: и по Title, и по Key могут искать один и тот же индекс
   const playerIndexMap = {};

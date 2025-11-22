@@ -172,6 +172,20 @@ func (p *Processor) Process(parseResult *logparser.ParseResult) *StatsData {
 		averageMu = totalEPI / float64(totalRounds)
 	}
 
+	// Обновляем имена в playerList из playerRatings (актуальные ники)
+	ratingNameMap := make(map[string]string) // Key -> Name
+	for _, rating := range playerRatings {
+		// Получаем Key из AccountID (обратная операция KeyAndTitle)
+		// Key формата "[U:1:XXXXXX]"
+		key := fmt.Sprintf("[U:1:%d]", rating.AccountID)
+		ratingNameMap[key] = rating.Name
+	}
+	for i, player := range playerList {
+		if actualName, ok := ratingNameMap[player.Key]; ok {
+			playerList[i].Title = actualName
+		}
+	}
+
 	return &StatsData{
 		Players:            playerList,
 		Weapons:            weapons,
@@ -436,8 +450,15 @@ func (p *Processor) buildPlayerRatings(roundStats []logparser.RoundStats, killEv
 	// Создаем маппинг AccountID -> имя игрока
 	playerNames := make(map[int64]string)
 
-	// Собираем имена из событий убийств
-	for _, event := range killEvents {
+	// Сортируем события убийств по дате для получения последних ников
+	sortedKills := make([]logparser.KillEvent, len(killEvents))
+	copy(sortedKills, killEvents)
+	sort.Slice(sortedKills, func(i, j int) bool {
+		return sortedKills[i].Date < sortedKills[j].Date
+	})
+
+	// Собираем имена из событий убийств (последний ник будет актуальным)
+	for _, event := range sortedKills {
 		if len(event.KillerSID) > 6 {
 			var accountID int64
 			if n, _ := fmt.Sscanf(event.KillerSID[5:len(event.KillerSID)-1], "%d", &accountID); n > 0 && accountID > 0 {
@@ -452,31 +473,31 @@ func (p *Processor) buildPlayerRatings(roundStats []logparser.RoundStats, killEv
 		}
 	}
 
-	// Собираем имена из событий флешек
-	for _, event := range flashEvents {
+	// Сортируем события флешек по дате
+	sortedFlash := make([]logparser.FlashEvent, len(flashEvents))
+	copy(sortedFlash, flashEvents)
+	sort.Slice(sortedFlash, func(i, j int) bool {
+		return sortedFlash[i].Date < sortedFlash[j].Date
+	})
+
+	// Собираем имена из событий флешек (последний ник будет актуальным)
+	for _, event := range sortedFlash {
 		if len(event.FlasherSID) > 6 {
 			var accountID int64
-			if n, _ := fmt.Sscanf(event.FlasherSID[5:len(event.FlasherSID)-1], "%d", &accountID); n > 0 && accountID > 0 && playerNames[accountID] == "" {
+			if n, _ := fmt.Sscanf(event.FlasherSID[5:len(event.FlasherSID)-1], "%d", &accountID); n > 0 && accountID > 0 {
 				playerNames[accountID] = event.FlasherName
 			}
 		}
 		if len(event.VictimSID) > 6 {
 			var accountID int64
-			if n, _ := fmt.Sscanf(event.VictimSID[5:len(event.VictimSID)-1], "%d", &accountID); n > 0 && accountID > 0 && playerNames[accountID] == "" {
+			if n, _ := fmt.Sscanf(event.VictimSID[5:len(event.VictimSID)-1], "%d", &accountID); n > 0 && accountID > 0 {
 				playerNames[accountID] = event.VictimName
 			}
 		}
 	}
 
-	// Собираем имена из событий дефьюза
-	for _, event := range defuseEvents {
-		if len(event.PlayerSID) > 6 {
-			var accountID int64
-			if n, _ := fmt.Sscanf(event.PlayerSID[5:len(event.PlayerSID)-1], "%d", &accountID); n > 0 && accountID > 0 && playerNames[accountID] == "" {
-				playerNames[accountID] = event.PlayerName
-			}
-		}
-	}
+	// Обработку defuse событий для имен пропускаем, так как kill и flash событий достаточно
+	// и они имеют более поздние даты (defuse редко встречается)
 
 	// Агрегируем данные по игрокам
 	playerData := make(map[int64]*PlayerRating)
@@ -495,6 +516,12 @@ func (p *Processor) buildPlayerRatings(roundStats []logparser.RoundStats, killEv
 			}
 
 			rating := playerData[playerStats.AccountID]
+
+			// Всегда обновляем имя из playerNames (там последний актуальный ник)
+			if name, ok := playerNames[playerStats.AccountID]; ok {
+				rating.Name = name
+			}
+
 			rating.RoundsPlayed++
 			rating.TotalEPI += playerStats.Rating
 			rating.TotalDamage += playerStats.Damage

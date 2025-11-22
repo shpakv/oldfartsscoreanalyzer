@@ -94,6 +94,26 @@ type PlayerTvsCTStats struct {
 	KDDiff        float64         `json:"kd_diff"`        // T K/D - CT K/D
 }
 
+// WeaponStat статистика по одному оружию
+type WeaponStat struct {
+	WeaponName string `json:"weapon_name"`
+	Kills      int    `json:"kills"`
+}
+
+// PlayerFlashStats статистика флэшбэнгов игрока
+type PlayerFlashStats struct {
+	TotalFlashed     float64           `json:"total_flashed"`      // Сколько всего секунд ослепил других
+	TotalBeenFlashed float64           `json:"total_been_flashed"` // Сколько всего секунд был ослеплен
+	TopVictims       []FlashVictimStat `json:"top_victims"`        // Топ-5 жертв (кого ослепил больше всего)
+	TopFlashers      []FlashVictimStat `json:"top_flashers"`       // Топ-5 ослепивших (кто ослепил этого игрока)
+}
+
+// FlashVictimStat статистика по одной жертве/ослепившему
+type FlashVictimStat struct {
+	PlayerName string  `json:"player_name"`
+	Seconds    float64 `json:"seconds"`
+}
+
 // PlayerProgress представляет данные прогресса игрока по датам
 type PlayerProgress struct {
 	AccountID     int64              `json:"account_id"`
@@ -107,6 +127,8 @@ type PlayerProgress struct {
 	TopPartners   []PlayerPairStats  `json:"top_partners"`
 	MapStats      []PlayerMapStats   `json:"map_stats"`   // Статистика игрока по картам
 	TvsCTStats    *PlayerTvsCTStats  `json:"tvsct_stats"` // T vs CT статистика игрока
+	TopWeapons    []WeaponStat       `json:"top_weapons"` // Топ-5 оружий игрока
+	FlashStats    *PlayerFlashStats  `json:"flash_stats"` // Статистика флэшбэнгов
 }
 
 // DailyPlayerStats статистика игрока за один день
@@ -130,6 +152,7 @@ type PlayerTotalStats struct {
 	TotalKills   int     `json:"total_kills"`
 	TotalDeaths  int     `json:"total_deaths"`
 	AvgEPI       float64 `json:"avg_epi"`
+	Rating       float64 `json:"rating"` // Байесовский рейтинг (BayesianEPI)
 	AvgKD        float64 `json:"avg_kd"`
 	AvgADR       float64 `json:"avg_adr"`
 	WinRate      float64 `json:"win_rate"`
@@ -163,31 +186,12 @@ func (p *ProgressTabComponent) GenerateHTML() string {
   <!-- Общая статистика (все игроки) -->
   <div id="overallStats" style="padding:20px;">
     <div style="background:var(--panel);padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.1);">
-      <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">🕐 Активность по времени суток</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-        <div>
-          <canvas id="overallHourChart" style="max-height:300px;"></canvas>
-        </div>
-        <div>
-          <canvas id="overallHourWRChart" style="max-height:300px;"></canvas>
-        </div>
+      <h3 style="margin:0 0 8px;color:var(--accent);font-size:18px;">🤝 Топ пары игроков</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:12px;background:rgba(124,92,255,0.05);border-radius:6px;border-left:3px solid rgba(124,92,255,0.3);">
+        <strong>Как считается:</strong> Для каждого раунда создаются все возможные пары игроков из одной команды.
+        Считается Win Rate (процент побед) и средний K/D пары.
+        Отображаются топ-10 пар с минимум 10 раундами вместе, отсортированные по Win Rate.
       </div>
-    </div>
-
-    <div style="background:var(--panel);padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.1);">
-      <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">📅 Активность по дням недели</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-        <div>
-          <canvas id="overallDayChart" style="max-height:300px;"></canvas>
-        </div>
-        <div>
-          <canvas id="overallDayWRChart" style="max-height:300px;"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <div style="background:var(--panel);padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.1);">
-      <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">🤝 Топ пары игроков</h3>
       <div id="topPairsContent"></div>
     </div>
 
@@ -213,8 +217,8 @@ func (p *ProgressTabComponent) GenerateHTML() string {
           <div style="font-size:12px;color:var(--muted);margin-top:4px;">Раундов сыграно</div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#3b82f6;" id="stat-epi">0.00</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Средний EPI</div>
+          <div style="font-size:28px;font-weight:bold;" id="stat-rating">0.00</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Рейтинг</div>
         </div>
         <div style="text-align:center;">
           <div style="font-size:28px;font-weight:bold;color:#f59e0b;" id="stat-kd">0.00</div>
@@ -251,28 +255,12 @@ func (p *ProgressTabComponent) GenerateHTML() string {
       </div>
     </div>
 
-    <!-- Лучшее время -->
-    <div style="background:var(--panel);padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.1);">
-      <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">⏰ Лучшее время для игры</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
-        <div style="padding:16px;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);border-radius:8px;">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">🌟 Лучшее время</div>
-          <div id="playerBestTime" style="font-size:20px;font-weight:bold;color:#22c55e;">-</div>
-        </div>
-        <div style="padding:16px;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);border-radius:8px;">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">⚠️ Худшее время</div>
-          <div id="playerWorstTime" style="font-size:20px;font-weight:bold;color:#ef4444;">-</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr;gap:20px;">
-        <canvas id="playerHourChart" style="max-height:250px;"></canvas>
-        <canvas id="playerDayChart" style="max-height:250px;"></canvas>
-      </div>
-    </div>
-
     <!-- Лучшие партнеры -->
     <div style="background:var(--panel);padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.1);">
-      <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">🤝 Лучшие партнеры</h3>
+      <h3 style="margin:0 0 8px;color:var(--accent);font-size:18px;">🤝 Лучшие партнеры</h3>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:16px;padding:10px;background:rgba(124,92,255,0.05);border-radius:6px;border-left:3px solid rgba(124,92,255,0.3);">
+        Топ-5 партнёров с лучшим Win Rate при совместной игре (минимум 5 раундов вместе)
+      </div>
       <div id="playerPartnersContent"></div>
     </div>
 
@@ -283,9 +271,21 @@ func (p *ProgressTabComponent) GenerateHTML() string {
     </div>
 
     <!-- T vs CT -->
-    <div style="background:var(--panel);padding:20px;border-radius:12px;border:1px solid rgba(124,92,255,0.1);">
+    <div style="background:var(--panel);padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.1);">
       <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">⚔️ T vs CT</h3>
       <div id="playerTvsCTContent"></div>
+    </div>
+
+    <!-- Топ оружий -->
+    <div style="background:var(--panel);padding:20px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(124,92,255,0.1);">
+      <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">🔫 Топ оружий</h3>
+      <div id="playerWeaponsContent"></div>
+    </div>
+
+    <!-- Индекс Пирога -->
+    <div style="background:var(--panel);padding:20px;border-radius:12px;border:1px solid rgba(124,92,255,0.1);">
+      <h3 style="margin:0 0 16px;color:var(--accent);font-size:18px;">💥 Индекс Пирога</h3>
+      <div id="playerFlashContent"></div>
     </div>
   </div>
 </div>`
@@ -302,15 +302,31 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
 		return fmt.Sprintf(`console.error('Failed to generate progress data: %s');`, err.Error())
 	}
 
+	averageMu := data.AverageMu
+
 	return fmt.Sprintf(`
 // Init: Player Progress with Synergy and Time Analysis
 (function() {
   const data = %s;
+  const AVERAGE_MU = %v; // Средний рейтинг всех игроков
   const playerSelect = document.getElementById('playerSelect');
   const overallStatsDiv = document.getElementById('overallStats');
   const playerStatsDiv = document.getElementById('playerStats');
 
   let charts = {};
+
+  // Функция для определения цвета рейтинга
+  function getRatingColor(rating) {
+    if (rating >= AVERAGE_MU * 1.25) {
+      return '#cfb53b'; // gold - Гиперебака
+    } else if (rating >= AVERAGE_MU * 1.05) {
+      return '#ef4444'; // red - Ебака
+    } else if (rating >= AVERAGE_MU * 0.85) {
+      return '#4b69ff'; // blue - Пердун
+    } else {
+      return '#9ca3af'; // gray - Подпивас
+    }
+  }
 
   // Заполняем список игроков
   data.players.forEach(player => {
@@ -344,78 +360,6 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
     Object.values(charts).forEach(chart => chart.destroy());
     charts = {};
 
-    // График активности по часам
-    charts.overallHour = new Chart(document.getElementById('overallHourChart'), {
-      type: 'bar',
-      data: {
-        labels: data.overall_by_hour.map(slot => slot.label),
-        datasets: [{
-          label: 'Раундов',
-          data: data.overall_by_hour.map(slot => slot.rounds_played),
-          backgroundColor: 'rgba(124, 92, 255, 0.6)',
-          borderColor: '#7c5cff',
-          borderWidth: 1
-        }]
-      },
-      options: getChartOptions('Активность по часам')
-    });
-
-    // График винрейта по часам
-    const hourWROptions = getChartOptions('Win Rate по часам');
-    hourWROptions.scales.y.max = 100;
-    charts.overallHourWR = new Chart(document.getElementById('overallHourWRChart'), {
-      type: 'line',
-      data: {
-        labels: data.overall_by_hour.map(slot => slot.label),
-        datasets: [{
-          label: 'Win Rate',
-          data: data.overall_by_hour.map(slot => slot.win_rate),
-          borderColor: '#22c55e',
-          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-          borderWidth: 2,
-          tension: 0.3,
-          fill: true
-        }]
-      },
-      options: hourWROptions
-    });
-
-    // График активности по дням недели
-    charts.overallDay = new Chart(document.getElementById('overallDayChart'), {
-      type: 'bar',
-      data: {
-        labels: data.overall_by_day.map(slot => slot.label),
-        datasets: [{
-          label: 'Раундов',
-          data: data.overall_by_day.map(slot => slot.rounds_played),
-          backgroundColor: 'rgba(59, 130, 246, 0.6)',
-          borderColor: '#3b82f6',
-          borderWidth: 1
-        }]
-      },
-      options: getChartOptions('Активность по дням недели')
-    });
-
-    // График винрейта по дням недели
-    const dayWROptions = getChartOptions('Win Rate по дням недели');
-    dayWROptions.scales.y.max = 100;
-    charts.overallDayWR = new Chart(document.getElementById('overallDayWRChart'), {
-      type: 'line',
-      data: {
-        labels: data.overall_by_day.map(slot => slot.label),
-        datasets: [{
-          label: 'Win Rate',
-          data: data.overall_by_day.map(slot => slot.win_rate),
-          borderColor: '#8b5cf6',
-          backgroundColor: 'rgba(139, 92, 246, 0.1)',
-          borderWidth: 2,
-          tension: 0.3,
-          fill: true
-        }]
-      },
-      options: dayWROptions
-    });
-
     // Топ пары
     renderTopPairs();
 
@@ -436,7 +380,10 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
 
     // Обновляем общую статистику
     document.getElementById('stat-rounds').textContent = player.totals.rounds_played;
-    document.getElementById('stat-epi').textContent = player.totals.avg_epi.toFixed(2);
+    const ratingElement = document.getElementById('stat-rating');
+    const rating = player.totals.rating;
+    ratingElement.textContent = rating.toFixed(3);
+    ratingElement.style.color = getRatingColor(rating);
     document.getElementById('stat-kd').textContent = player.totals.avg_kd.toFixed(2);
     document.getElementById('stat-adr').textContent = Math.round(player.totals.avg_adr);
     document.getElementById('stat-winrate').textContent = player.totals.win_rate.toFixed(1) + '%%';
@@ -515,103 +462,6 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
       options: winRateOptions
     });
 
-    // График активности
-    charts.activity = new Chart(document.getElementById('chartActivity'), {
-      type: 'bar',
-      data: {
-        labels: dates,
-        datasets: [{
-          label: 'Раундов',
-          data: player.daily.map(d => d.rounds_played),
-          backgroundColor: 'rgba(34, 197, 94, 0.7)',
-          borderColor: '#22c55e',
-          borderWidth: 1
-        }]
-      },
-      options: getChartOptions('Активность')
-    });
-
-    // График K/D/A
-    const kdaOptions = getChartOptions('Kills / Deaths / Assists');
-    kdaOptions.plugins.legend = { display: true, labels: { color: '#e5e5e5' } };
-    charts.kda = new Chart(document.getElementById('chartKDA'), {
-      type: 'line',
-      data: {
-        labels: dates,
-        datasets: [
-          {
-            label: 'Kills',
-            data: player.daily.map(d => d.kills),
-            borderColor: '#22c55e',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            borderWidth: 2,
-            tension: 0.3
-          },
-          {
-            label: 'Deaths',
-            data: player.daily.map(d => d.deaths),
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            borderWidth: 2,
-            tension: 0.3
-          },
-          {
-            label: 'Assists',
-            data: player.daily.map(d => d.assists),
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderWidth: 2,
-            tension: 0.3
-          }
-        ]
-      },
-      options: kdaOptions
-    });
-
-    // График времени игрока (по часам)
-    if (player.by_hour && player.by_hour.length > 0) {
-      const playerHourOptions = getChartOptions('Ваш Win Rate по часам');
-      playerHourOptions.scales.y.max = 100;
-      charts.playerHour = new Chart(document.getElementById('playerHourChart'), {
-        type: 'bar',
-        data: {
-          labels: player.by_hour.map(slot => slot.label),
-          datasets: [{
-            label: 'Win Rate',
-            data: player.by_hour.map(slot => slot.win_rate),
-            backgroundColor: player.by_hour.map(slot =>
-              slot.win_rate >= 60 ? 'rgba(34, 197, 94, 0.7)' :
-              slot.win_rate >= 50 ? 'rgba(245, 158, 11, 0.7)' : 'rgba(239, 68, 68, 0.7)'
-            ),
-            borderWidth: 1
-          }]
-        },
-        options: playerHourOptions
-      });
-    }
-
-    // График времени игрока (по дням недели)
-    if (player.by_day_of_week && player.by_day_of_week.length > 0) {
-      const playerDayOptions = getChartOptions('Ваш Win Rate по дням недели');
-      playerDayOptions.scales.y.max = 100;
-      charts.playerDay = new Chart(document.getElementById('playerDayChart'), {
-        type: 'bar',
-        data: {
-          labels: player.by_day_of_week.map(slot => slot.label),
-          datasets: [{
-            label: 'Win Rate',
-            data: player.by_day_of_week.map(slot => slot.win_rate),
-            backgroundColor: player.by_day_of_week.map(slot =>
-              slot.win_rate >= 60 ? 'rgba(34, 197, 94, 0.7)' :
-              slot.win_rate >= 50 ? 'rgba(245, 158, 11, 0.7)' : 'rgba(239, 68, 68, 0.7)'
-            ),
-            borderWidth: 1
-          }]
-        },
-        options: playerDayOptions
-      });
-    }
-
     // Лучшие партнеры
     renderPlayerPartners(player);
 
@@ -620,6 +470,12 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
 
     // T vs CT статистика игрока
     renderPlayerTvsCT(player);
+
+    // Топ оружий игрока
+    renderPlayerWeapons(player);
+
+    // Статистика флэшбэнгов игрока
+    renderPlayerFlash(player);
   }
 
   function renderTopPairs() {
@@ -689,20 +545,17 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
 
     let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">';
     data.map_stats.forEach(mapStat => {
-      const tWinColor = mapStat.t_win_rate >= 55 ? '#22c55e' : mapStat.t_win_rate >= 45 ? '#fde047' : '#ef4444';
-      const ctWinColor = mapStat.ct_win_rate >= 55 ? '#22c55e' : mapStat.ct_win_rate >= 45 ? '#fde047' : '#ef4444';
-
       html += '<div style="padding:20px;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);border-radius:8px;border:1px solid rgba(124,92,255,0.2);">' +
         '<div style="font-size:16px;font-weight:bold;color:#e5e5e5;margin-bottom:12px;text-align:center;">' + mapStat.map_name + '</div>' +
         '<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">' + mapStat.total_rounds + ' раундов</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
           '<div style="text-align:center;padding:12px;background:rgba(0,0,0,0.3);border-radius:6px;">' +
-            '<div style="font-size:20px;font-weight:bold;color:' + tWinColor + '">' + mapStat.t_win_rate.toFixed(1) + '%%</div>' +
-            '<div style="font-size:10px;color:var(--muted);margin-top:4px;">T Win Rate</div>' +
+            '<div style="font-size:20px;font-weight:bold;color:#f59e0b">' + mapStat.t_win_rate.toFixed(1) + '%%</div>' +
+            '<div style="font-size:10px;color:#f59e0b;margin-top:4px;">T Win Rate</div>' +
           '</div>' +
           '<div style="text-align:center;padding:12px;background:rgba(0,0,0,0.3);border-radius:6px;">' +
-            '<div style="font-size:20px;font-weight:bold;color:' + ctWinColor + '">' + mapStat.ct_win_rate.toFixed(1) + '%%</div>' +
-            '<div style="font-size:10px;color:var(--muted);margin-top:4px;">CT Win Rate</div>' +
+            '<div style="font-size:20px;font-weight:bold;color:#3b82f6">' + mapStat.ct_win_rate.toFixed(1) + '%%</div>' +
+            '<div style="font-size:10px;color:#3b82f6;margin-top:4px;">CT Win Rate</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -720,17 +573,15 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
 
     let html = '<table style="width:100%;"><thead><tr>' +
       '<th>Игрок</th>' +
-      '<th>Предпочтение</th>' +
-      '<th>T Раундов</th>' +
-      '<th>T K/D</th>' +
-      '<th>T WR%%</th>' +
-      '<th>CT Раундов</th>' +
-      '<th>CT K/D</th>' +
-      '<th>CT WR%%</th>' +
+      '<th style="color:#f59e0b;">T Раундов</th>' +
+      '<th style="color:#f59e0b;">T K/D</th>' +
+      '<th style="color:#f59e0b;">T WR%%</th>' +
+      '<th style="color:#3b82f6;">CT Раундов</th>' +
+      '<th style="color:#3b82f6;">CT K/D</th>' +
+      '<th style="color:#3b82f6;">CT WR%%</th>' +
     '</tr></thead><tbody>';
 
     data.tvsct_stats.forEach(tvs => {
-      const preferredColor = tvs.preferred_side === 'T' ? '#f59e0b' : tvs.preferred_side === 'CT' ? '#3b82f6' : '#8b5cf6';
       const tKDColor = tvs.t_stats.kd >= 1 ? '#22c55e' : '#ef4444';
       const ctKDColor = tvs.ct_stats.kd >= 1 ? '#22c55e' : '#ef4444';
       const tWRColor = tvs.t_stats.win_rate >= 50 ? '#22c55e' : '#ef4444';
@@ -738,7 +589,6 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
 
       html += '<tr>' +
         '<td>' + tvs.name + '</td>' +
-        '<td style="color:' + preferredColor + ';font-weight:bold;">' + tvs.preferred_side + '</td>' +
         '<td>' + tvs.t_stats.rounds_played + '</td>' +
         '<td style="color:' + tKDColor + '">' + tvs.t_stats.kd.toFixed(2) + '</td>' +
         '<td style="color:' + tWRColor + '">' + tvs.t_stats.win_rate.toFixed(1) + '%%</td>' +
@@ -790,15 +640,8 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
     }
 
     const tvs = player.tvsct_stats;
-    const preferredColor = tvs.preferred_side === 'T' ? '#f59e0b' : tvs.preferred_side === 'CT' ? '#3b82f6' : '#8b5cf6';
 
-    let html = '<div style="margin-bottom:20px;text-align:center;">' +
-      '<div style="font-size:14px;color:var(--muted);margin-bottom:8px;">Предпочтительная сторона</div>' +
-      '<div style="font-size:24px;font-weight:bold;color:' + preferredColor + ';">' + tvs.preferred_side + '</div>' +
-      '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Разница K/D: ' + tvs.kd_diff.toFixed(2) + '</div>' +
-    '</div>';
-
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">';
+    let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">';
 
     // T side
     const tKDColor = tvs.t_stats.kd >= 1 ? '#22c55e' : '#ef4444';
@@ -854,6 +697,81 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
     div.innerHTML = html;
   }
 
+  function renderPlayerWeapons(player) {
+    const div = document.getElementById('playerWeaponsContent');
+    if (!player.top_weapons || player.top_weapons.length === 0) {
+      div.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Недостаточно данных</div>';
+      return;
+    }
+
+    let html = '<div style="display:grid;gap:12px;">';
+    player.top_weapons.forEach((weapon, idx) => {
+      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🔹';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(0,0,0,0.3);border-radius:6px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:20px;">' + medal + '</span>' +
+          '<span style="color:#e5e5e5;font-weight:bold;">' + weapon.weapon_name + '</span>' +
+        '</div>' +
+        '<div style="color:#7c5cff;font-weight:bold;font-size:18px;">' + weapon.kills + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    div.innerHTML = html;
+  }
+
+  function renderPlayerFlash(player) {
+    const div = document.getElementById('playerFlashContent');
+    if (!player.flash_stats) {
+      div.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Недостаточно данных</div>';
+      return;
+    }
+
+    const fs = player.flash_stats;
+
+    let html = '<div style="margin-bottom:20px;">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">' +
+        '<div style="text-align:center;padding:16px;background:rgba(124,92,255,0.1);border-radius:6px;border:1px solid rgba(124,92,255,0.3);">' +
+          '<div style="font-size:24px;font-weight:bold;color:#7c5cff;">' + fs.total_flashed.toFixed(1) + ' сек</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Ослепил других</div>' +
+        '</div>' +
+        '<div style="text-align:center;padding:16px;background:rgba(239,68,68,0.1);border-radius:6px;border:1px solid rgba(239,68,68,0.3);">' +
+          '<div style="font-size:24px;font-weight:bold;color:#ef4444;">' + fs.total_been_flashed.toFixed(1) + ' сек</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Был ослеплен</div>' +
+        '</div>' +
+      '</div>';
+
+    // Топ жертв (кого ослепил)
+    if (fs.top_victims && fs.top_victims.length > 0) {
+      html += '<div style="margin-bottom:20px;">' +
+        '<h4 style="margin:0 0 12px;color:var(--muted);font-size:14px;">Кого ослепил больше всего:</h4>' +
+        '<div style="display:grid;gap:8px;">';
+      fs.top_victims.forEach(victim => {
+        html += '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,0.3);border-radius:6px;">' +
+          '<span style="color:#e5e5e5;">' + victim.player_name + '</span>' +
+          '<span style="color:#7c5cff;font-weight:bold;">' + victim.seconds.toFixed(1) + ' сек</span>' +
+        '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Топ ослепивших (кто ослепил)
+    if (fs.top_flashers && fs.top_flashers.length > 0) {
+      html += '<div>' +
+        '<h4 style="margin:0 0 12px;color:var(--muted);font-size:14px;">Кто ослепил меня больше всего:</h4>' +
+        '<div style="display:grid;gap:8px;">';
+      fs.top_flashers.forEach(flasher => {
+        html += '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,0.3);border-radius:6px;">' +
+          '<span style="color:#e5e5e5;">' + flasher.player_name + '</span>' +
+          '<span style="color:#ef4444;font-weight:bold;">' + flasher.seconds.toFixed(1) + ' сек</span>' +
+        '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+    div.innerHTML = html;
+  }
+
   function getChartOptions(title) {
     return {
       responsive: true,
@@ -888,7 +806,7 @@ func (p *ProgressTabComponent) GenerateJS(data *stats.StatsData) string {
   // Показываем общую статистику по умолчанию
   showOverallStats();
 })();
-`, string(jsonData))
+`, string(jsonData), averageMu)
 }
 
 // buildProgressData собирает данные прогресса для всех игроков + синергия + временная аналитика
@@ -1192,6 +1110,7 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 
 		// Вычисляем общую статистику
 		avgEPI := 0.0
+		bayesianRating := 0.0
 		avgKD := 0.0
 		avgADR := 0.0
 		winRate := 0.0
@@ -1200,6 +1119,7 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 			for _, rating := range data.PlayerRatings {
 				if rating.AccountID == accountID {
 					avgEPI = rating.AverageEPI
+					bayesianRating = rating.BayesianEPI
 					break
 				}
 			}
@@ -1220,6 +1140,7 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 			TotalKills:   totalKills,
 			TotalDeaths:  totalDeaths,
 			AvgEPI:       avgEPI,
+			Rating:       bayesianRating,
 			AvgKD:        avgKD,
 			AvgADR:       avgADR,
 			WinRate:      winRate,
@@ -1453,6 +1374,121 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 		player.MapStats = mapStats
 	}
 
+	// Создаем маппинг между индексом игрока и AccountID
+	playerIndexToID := make(map[int]int64)
+	for idx, player := range data.Players {
+		for _, rating := range data.PlayerRatings {
+			if rating.Name == player.Title {
+				playerIndexToID[idx] = rating.AccountID
+				break
+			}
+		}
+	}
+
+	// Собираем данные об оружии для каждого игрока
+	for playerIdx := range data.Players {
+		accountID, ok := playerIndexToID[playerIdx]
+		if !ok {
+			continue
+		}
+		if playerProgress := playerMap[accountID]; playerProgress != nil {
+			// Собираем топ оружий из WeaponData
+			topWeapons := make([]WeaponStat, 0)
+
+			// Проходим по всем оружиям и считаем убийства
+			for weaponIdx, weapon := range data.Weapons {
+				kills := 0
+				if weaponIdx < len(data.WeaponData.WeaponKillsMatrix) &&
+					playerIdx < len(data.WeaponData.WeaponKillsMatrix[weaponIdx]) {
+					kills = data.WeaponData.WeaponKillsMatrix[weaponIdx][playerIdx]
+				}
+				if kills > 0 {
+					topWeapons = append(topWeapons, WeaponStat{
+						WeaponName: weapon,
+						Kills:      kills,
+					})
+				}
+			}
+
+			// Сортируем по количеству убийств и берем топ-5
+			sort.Slice(topWeapons, func(i, j int) bool {
+				return topWeapons[i].Kills > topWeapons[j].Kills
+			})
+			if len(topWeapons) > 5 {
+				topWeapons = topWeapons[:5]
+			}
+
+			playerProgress.TopWeapons = topWeapons
+		}
+	}
+
+	// Собираем статистику флэшбэнгов для каждого игрока
+	for playerIdx := range data.Players {
+		accountID, ok := playerIndexToID[playerIdx]
+		if !ok {
+			continue
+		}
+		if playerProgress := playerMap[accountID]; playerProgress != nil {
+			flashStats := &PlayerFlashStats{
+				TopVictims:  make([]FlashVictimStat, 0),
+				TopFlashers: make([]FlashVictimStat, 0),
+			}
+
+			// Сколько секунд ослепил других
+			totalFlashed := 0.0
+			victims := make([]FlashVictimStat, 0)
+			if playerIdx < len(data.FlashData.SecondsMatrix) {
+				for victimIdx, seconds := range data.FlashData.SecondsMatrix[playerIdx] {
+					totalFlashed += seconds
+					if seconds > 0 && victimIdx < len(data.Players) {
+						victims = append(victims, FlashVictimStat{
+							PlayerName: data.Players[victimIdx].Title,
+							Seconds:    seconds,
+						})
+					}
+				}
+			}
+			flashStats.TotalFlashed = totalFlashed
+
+			// Сортируем и берем топ-5 жертв
+			sort.Slice(victims, func(i, j int) bool {
+				return victims[i].Seconds > victims[j].Seconds
+			})
+			if len(victims) > 5 {
+				victims = victims[:5]
+			}
+			flashStats.TopVictims = victims
+
+			// Сколько секунд был ослеплен
+			totalBeenFlashed := 0.0
+			flashers := make([]FlashVictimStat, 0)
+			for flasherIdx := 0; flasherIdx < len(data.FlashData.SecondsMatrix); flasherIdx++ {
+				if flasherIdx < len(data.FlashData.SecondsMatrix) && playerIdx < len(data.FlashData.SecondsMatrix[flasherIdx]) {
+					seconds := data.FlashData.SecondsMatrix[flasherIdx][playerIdx]
+					totalBeenFlashed += seconds
+					if seconds > 0 && flasherIdx < len(data.Players) {
+						flashers = append(flashers, FlashVictimStat{
+							PlayerName: data.Players[flasherIdx].Title,
+							Seconds:    seconds,
+						})
+					}
+				}
+			}
+			flashStats.TotalBeenFlashed = totalBeenFlashed
+
+			// Сортируем и берем топ-5 ослепивших
+			sort.Slice(flashers, func(i, j int) bool {
+				return flashers[i].Seconds > flashers[j].Seconds
+			})
+			if len(flashers) > 5 {
+				flashers = flashers[:5]
+			}
+			flashStats.TopFlashers = flashers
+
+			playerProgress.FlashStats = flashStats
+		}
+	}
+
 	// Вычисляем метрики для карт
 	for _, mapStat := range mapStatsMap {
 		if mapStat.TotalRounds > 0 {
@@ -1472,7 +1508,7 @@ func (p *ProgressTabComponent) buildProgressData(data *stats.StatsData) *Progres
 		return result.TvsCTStats[i].Name < result.TvsCTStats[j].Name
 	})
 
-	// Преобразуем в массив и сортируем по имени
+	// Преобразуем в массив и сортируем по имени (ВАЖНО: делаем это в конце, после привязки всех данных)
 	for _, progress := range playerMap {
 		result.Players = append(result.Players, *progress)
 	}

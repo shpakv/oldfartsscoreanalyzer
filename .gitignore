@@ -238,6 +238,3 @@ terraform.rc
 .ionide
 
 # Support for Project snippet scope
-
-# End of https://www.toptal.com/developers/gitignore/api/go,intellij+all,visualstudiocode,macos,terraform
-/internal/components/tree.go

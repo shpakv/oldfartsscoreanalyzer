@@ -141,27 +141,28 @@ document.getElementById('load-step-1').style.color = '#22c55e';
 
 <div class="header">
   <h1>Сколько пёрнул старый?</h1>
-  <div class="date-filter">
-    <label>Фильтр по датам:</label>
-    <input type="date" id="date-from" class="date-input" min="` + minDate + `" max="` + maxDate + `">
-    <span>—</span>
-    <input type="date" id="date-to" class="date-input" min="` + minDate + `" max="` + maxDate + `">
-    <button id="reset-dates" class="btn">Сбросить</button>
-    <span class="small" style="margin-left:8px">Доступный период: ` + minDate + ` — ` + maxDate + `</span>
-  </div>
 </div>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="tournament">🏆 Турнир</button>
   <button class="tab-btn" data-tab="kills">Сорян, братан</button>
-  <button class="tab-btn" data-tab="player-ratings">Рейтинг игроков</button>
-  <button class="tab-btn" data-tab="progress">Прогресс игроков</button>
+  <button class="tab-btn" data-tab="player-ratings">Рейтинг</button>
+  <button class="tab-btn" data-tab="progress">Прогресс</button>
   <button class="tab-btn" data-tab="tree">Древо Пердунов</button>
   <button class="tab-btn" data-tab="kw">Кто с чего убивает</button>
   <button class="tab-btn" data-tab="vw">Кого чем убивают</button>
   <button class="tab-btn" data-tab="flash">Индекс Пирога</button>
   <button class="tab-btn" data-tab="rounds">Игры</button>
   <button class="tab-btn" data-tab="defuse" style="display:none">Герои Дефьюза</button>
+</div>
+
+<div class="date-filter">
+  <label>Фильтр по датам:</label>
+  <input type="date" id="date-from" class="date-input" min="` + minDate + `" max="` + maxDate + `">
+  <span>—</span>
+  <input type="date" id="date-to" class="date-input" min="` + minDate + `" max="` + maxDate + `">
+  <button id="reset-dates" class="btn">Сбросить</button>
+  <span class="small" style="margin-left:8px">Доступный период: ` + minDate + ` — ` + maxDate + `</span>
 </div>
 
 ` + h.tournamentTab.GenerateHTML() + `
@@ -393,21 +394,21 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 .light-global:nth-child(14) { background: #ffaa00; animation-delay: 1.1s; }
 .light-global:nth-child(15) { background: #ff00aa; animation-delay: 1.4s; }
 .header{padding:16px}
-h1{margin:0 0 6px;font-size:18px}
+h1{margin:0;font-size:18px}
 .sub{color:var(--muted);margin:0 0 12px}
-.date-filter{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;background:rgba(43,43,43,0.6);padding:12px;border-radius:12px;border:1px solid rgba(124,92,255,0.15)}
+.tabs{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto}
+.date-filter{display:flex;align-items:center;gap:10px;margin:0 16px 12px;flex-wrap:wrap;background:rgba(43,43,43,0.6);padding:12px;border-radius:12px;border:1px solid rgba(124,92,255,0.15)}
 .date-filter label{color:var(--text);font-size:14px;font-weight:600}
 .date-input{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.2);border-radius:10px;padding:8px 12px;color:var(--text);font-size:14px;outline:none;min-width:150px;transition:all 0.2s ease;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2)}
 .date-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,0.2), inset 0 2px 4px rgba(0,0,0,0.2)}
 .date-input::-webkit-calendar-picker-indicator{filter:invert(0.7);cursor:pointer;transition:all 0.2s ease}
 .date-input::-webkit-calendar-picker-indicator:hover{filter:invert(1)}
-.tabs{display:flex;gap:8px;padding:0 16px;overflow-x:auto}
 .tab-btn{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.15);color:var(--text);padding:10px 18px;border-radius:12px;cursor:pointer;white-space:nowrap;transition:all 0.2s ease;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
 .tab-btn:hover{border-color:rgba(124,92,255,0.4);transform:translateY(-1px);box-shadow:0 4px 8px rgba(0,0,0,0.3)}
 .tab-btn.active{border-color:var(--accent);color:#fff;background:linear-gradient(145deg, #3d2d5f 0%, #2a2440 100%);box-shadow:0 4px 12px rgba(124,92,255,0.4), inset 0 1px 2px rgba(255,255,255,0.1)}
 .view{display:none;padding:16px}
 .view.active{display:block}
-.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0 14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0 14px;min-height:50px}
 .toolbar input[type="search"]{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.2);border-radius:10px;padding:9px 14px;color:var(--text);min-width:240px;outline:none;transition:all 0.2s ease;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2)}
 .toolbar input[type="search"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,0.2), inset 0 2px 4px rgba(0,0,0,0.2)}
 .btn{background:linear-gradient(145deg, #2a2a2a 0%, #232323 100%);border:1px solid rgba(124,92,255,0.2);border-radius:10px;padding:9px 16px;color:var(--text);cursor:pointer;transition:all 0.2s ease;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
@@ -460,9 +461,12 @@ td.sticky-left:hover,th.sticky-left:hover,td.sticky-left.cell:hover{background:l
 .tree-node-excluded{font-size:10px;color:#ef4444;font-weight:600;margin-top:4px;display:flex;align-items:center;gap:4px}
 .tree-node-status{font-size:18px;color:#22c55e;filter:drop-shadow(0 0 8px currentColor);flex-shrink:0}
 .tree-node.inactive .tree-node-status{color:#666;filter:none}
-.tree-children{display:flex;flex-direction:column;gap:0;margin-left:40px;padding-left:20px;position:relative;border-left:2px solid rgba(124,92,255,0.3)}
+.tree-children{display:flex;flex-direction:column;gap:0;margin-left:40px;padding-left:30px;position:relative}
+.tree-children::before{content:"";position:absolute;left:0;top:0;bottom:50%;width:2px;background:rgba(124,92,255,0.4);border-radius:1px}
 .tree-children > .tree-branch{position:relative}
-.tree-children > .tree-branch::before{content:"";position:absolute;left:-20px;top:50%;width:20px;height:2px;background:linear-gradient(90deg, rgba(124,92,255,0.3) 0%, rgba(124,92,255,0.5) 100%)}
+.tree-children > .tree-branch::before{content:"→";position:absolute;left:-30px;top:50%;transform:translateY(-50%);color:rgba(124,92,255,0.7);font-size:20px;font-weight:bold}
+.tree-children > .tree-branch:first-child::after{content:"";position:absolute;left:0;top:0;bottom:50%;width:2px;background:rgba(124,92,255,0.4)}
+.tree-children > .tree-branch:last-child::after{content:"";position:absolute;left:0;top:0;height:50%;width:2px;background:rgba(124,92,255,0.4)}
 
 /* Мобильная версия */
 @media (max-width: 768px) {
@@ -498,8 +502,8 @@ td.sticky-left:hover,th.sticky-left:hover,td.sticky-left.cell:hover{background:l
   .tree-node-date{font-size:10px}
   .tree-node-excluded{font-size:9px;margin-top:3px}
   .tree-node-status{font-size:16px}
-  .tree-children{margin-left:30px;padding-left:15px}
-  .tree-children > .tree-branch::before{width:15px;left:-15px}
+  .tree-children{margin-left:30px;padding-left:20px}
+  .tree-children > .tree-branch::before{left:-20px;font-size:16px}
 }
 
 /* Очень маленькие экраны */
